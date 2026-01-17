@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataMatter | 个人学习与开发笔记</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --tab-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem 0;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin-top: 2rem;
+        }
+
+        /* 标签页控制 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: -1px;
+            overflow-x: auto;
+        }
+
+        .tab-link {
+            padding: 12px 24px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-link.active {
+            background: var(--tab-bg);
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* 内容区域 */
+        .tab-content {
+            display: none;
+            background: var(--tab-bg);
+            padding: 2rem;
+            border-radius: 0 8px 8px 8px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { color: var(--primary-color); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem; }
+        .note-card { background: #f1f5f9; border-left: 4px solid var(--primary-color); padding: 1rem; margin-bottom: 1rem; border-radius: 4px; }
+        code { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🚀 DataMatter 学习库</h1>
+    <p>记录从 iOS 开发到 AI 自动化的点滴进步</p>
+</header>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-link active" onclick="openTab(event, 'dev')">🛠 项目开发</button>
+        <button class="tab-link" onclick="openTab(event, 'math')">📐 数学逻辑</button>
+        <button class="tab-link" onclick="openTab(event, 'ai')">🤖 AI & RAG</button>
+        <button class="tab-link" onclick="openTab(event, 'resources')">📚 学习资源</button>
+    </div>
+
+    <div id="dev" class="tab-content active">
+        <h2>DataMatter & GitHub Pages</h2>
+        <div class="note-card">
+            <strong>当前目标：</strong> 自动化 GitHub Pages 部署。
+            <p>已成功配置 <code>datamatter.github.io</code> 仓库。下一步：通过 Python 脚本实现内容自动生成。</p>
+        </div>
+        <div class="note-card">
+            <strong>技术栈：</strong> HTML, CSS, JavaScript, Git.
+        </div>
+    </div>
+
+    <div id="math" class="tab-content">
+        <h2>组合数学 & 算法</h2>
+        <div class="note-card">
+            <strong>重点知识：</strong> 动态规划计算组合数。
+            <p>公式：$C(n, r) = C(n-1, r-1) + C(n-1, r)$</p>
+            <p>优点：避免了直接计算 <code>Factorial</code> 导致的整数溢出问题。</p>
+        </div>
+    </div>
+
+    <div id="ai" class="tab-content">
+        <h2>AI 自动化与 RAG</h2>
+        <div class="note-card">
+            <strong>正在学习：</strong> 使用 Python 扫描 Markdown 笔记并同步至向量数据库。
+        </div>
+        <div class="note-card">
+            <strong>工具：</strong> LangChain, Pinecone, OpenAI API.
+        </div>
+    </div>
+
+    <div id="resources" class="tab-content">
+        <h2>优质教育资源</h2>
+        <ul>
+            <li>CodeWizardsHQ
