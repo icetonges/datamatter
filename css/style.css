@@ -1,49 +1,50 @@
-/* Color Palette Definitions */
+/* 1. LIGHT THEME (Default) */
 :root {
     --bg-color: #f8fafc;
-    --text-color: #1e293b;
-    --sidebar-bg: #0f172a;
+    --text-color: #1e293b;      /* Dark Grey for light mode */
     --card-bg: #ffffff;
+    --card-shadow: rgba(0, 0, 0, 0.05);
     --border-color: #e2e8f0;
     --primary-blue: #2563eb;
-    --nav-text: #94a3b8;
+    --heading-color: #0f172a;   /* Bold dark for light mode */
 }
 
-/* Dark Theme Overrides */
+/* 2. DARK THEME overrides */
 [data-theme="dark"] {
-    --bg-color: #0f172a;
-    --text-color: #f1f5f9;
-    --sidebar-bg: #020617;
-    --card-bg: #1e293b;
+    --bg-color: #0f172a;        /* Deep blue/black */
+    --text-color: #f1f5f9;      /* Bright white/grey for dark mode */
+    --card-bg: #1e293b;         /* Lighter navy for cards */
+    --card-shadow: rgba(0, 0, 0, 0.3);
     --border-color: #334155;
-    --nav-text: #64748b;
+    --primary-blue: #60a5fa;    /* Brighter blue for visibility */
+    --heading-color: #38bdf8;   /* Sky blue for headings */
 }
 
+/* 3. APPLY VARIABLES TO ELEMENTS */
 body {
-    font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
+    font-family: 'Inter', sans-serif;
     margin: 0;
-    transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+    padding: 2rem;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+h2, h3 {
+    color: var(--heading-color); /* This makes "Developer Dashboard" change color! */
 }
 
 .card {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px var(--card-shadow);
     padding: 1.5rem;
     border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     margin-bottom: 1rem;
+    transition: 0.3s;
 }
 
-/* Sidebar Specifics */
-nav {
-    background-color: var(--sidebar-bg);
-    color: white;
+a {
+    color: var(--primary-blue);
+    text-decoration: none;
 }
-
-.nav-btn {
-    color: var(--nav-text);
-}
-
-.nav-btn:hover { color: white; }
