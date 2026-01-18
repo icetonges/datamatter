@@ -1,50 +1,50 @@
-/* 1. LIGHT THEME (Default) */
+/* 1. DEFINE COLOR VARIABLES FOR BOTH THEMES */
 :root {
-    --bg-color: #f8fafc;
-    --text-color: #1e293b;      /* Dark Grey for light mode */
-    --card-bg: #ffffff;
-    --card-shadow: rgba(0, 0, 0, 0.05);
+    --bg-color: #f8fafc;        /* Light Grey Background */
+    --text-primary: #1e293b;   /* Dark Text for Light Mode */
+    --text-secondary: #475569;
+    --card-bg: #ffffff;        /* White Cards */
     --border-color: #e2e8f0;
-    --primary-blue: #2563eb;
-    --heading-color: #0f172a;   /* Bold dark for light mode */
+    --heading-color: #0f172a;  /* Very Dark for Headings */
 }
 
-/* 2. DARK THEME overrides */
+/* DARK MODE OVERRIDES */
 [data-theme="dark"] {
-    --bg-color: #0f172a;        /* Deep blue/black */
-    --text-color: #f1f5f9;      /* Bright white/grey for dark mode */
-    --card-bg: #1e293b;         /* Lighter navy for cards */
-    --card-shadow: rgba(0, 0, 0, 0.3);
+    --bg-color: #0f172a;        /* Navy Blue/Black Background */
+    --text-primary: #f1f5f9;   /* White Text for Dark Mode */
+    --text-secondary: #94a3b8;
+    --card-bg: #1e293b;        /* Lighter Navy for Cards */
     --border-color: #334155;
-    --primary-blue: #60a5fa;    /* Brighter blue for visibility */
-    --heading-color: #38bdf8;   /* Sky blue for headings */
+    --heading-color: #38bdf8;  /* Sky Blue for Headings (High Contrast) */
 }
 
-/* 3. APPLY VARIABLES TO ELEMENTS */
+/* 2. APPLY TO ELEMENTS */
 body {
     background-color: var(--bg-color);
-    color: var(--text-color);
+    color: var(--text-primary);
     font-family: 'Inter', sans-serif;
     margin: 0;
     padding: 2rem;
     transition: background-color 0.3s, color 0.3s;
 }
 
+/* THIS FIXES THE "DEVELOPER DASHBOARD" VISIBILITY */
 h2, h3 {
-    color: var(--heading-color); /* This makes "Developer Dashboard" change color! */
+    color: var(--heading-color);
+    margin-top: 0;
 }
 
 .card {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 6px var(--card-shadow);
     padding: 1.5rem;
     border-radius: 12px;
-    margin-bottom: 1rem;
-    transition: 0.3s;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
-a {
-    color: var(--primary-blue);
-    text-decoration: none;
+p {
+    color: var(--text-secondary);
+    line-height: 1.6;
 }
