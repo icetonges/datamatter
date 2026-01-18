@@ -18,3 +18,10 @@
 <div class="key-box">
     <strong>Security Reminder:</strong> Manage your Gemini API Keys in the <a href="https://aistudio.google.com/app/apikey">API Dashboard</a>. Do not commit keys to GitHub.
 </div>
+<script>
+    // Check what theme the parent window is using
+    const savedTheme = localStorage.getItem('selected-theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+</script>

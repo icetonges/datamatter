@@ -15,17 +15,18 @@ function loadPage(btn, url) {
 
 // Function to toggle the theme
 function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const targetTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    const root = document.documentElement;
+    const newTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     
-    // 1. Apply to the main portal
-    document.documentElement.setAttribute('data-theme', targetTheme);
-    
-    // 2. Save choice to memory
-    localStorage.setItem('theme', targetTheme);
-    
-    // 3. Apply to the current iframe content
-    syncIframeTheme();
+    // 1. Update the sidebar/portal
+    root.setAttribute('data-theme', newTheme);
+    localStorage.setItem('selected-theme', newTheme);
+
+    // 2. REACH INTO THE IFRAME (The "Developer Dashboard" part)
+    const frame = document.getElementById('content-frame'); // or your iframe ID
+    if (frame && frame.contentDocument) {
+        frame.contentDocument.documentElement.setAttribute('data-theme', newTheme);
+    }
 }
 
 // Helper to push the theme inside the Iframe

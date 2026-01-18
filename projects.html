@@ -10,3 +10,10 @@
     <h3>datamatter.github.io</h3>
     <p>Centralized AI research hub.</p>
 </div>
+<script>
+    // Check what theme the parent window is using
+    const savedTheme = localStorage.getItem('selected-theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+</script>
