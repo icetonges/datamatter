@@ -1,0 +1,49 @@
+/* Color Palette Definitions */
+:root {
+    --bg-color: #f8fafc;
+    --text-color: #1e293b;
+    --sidebar-bg: #0f172a;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --primary-blue: #2563eb;
+    --nav-text: #94a3b8;
+}
+
+/* Dark Theme Overrides */
+[data-theme="dark"] {
+    --bg-color: #0f172a;
+    --text-color: #f1f5f9;
+    --sidebar-bg: #020617;
+    --card-bg: #1e293b;
+    --border-color: #334155;
+    --nav-text: #64748b;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+}
+
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 1rem;
+}
+
+/* Sidebar Specifics */
+nav {
+    background-color: var(--sidebar-bg);
+    color: white;
+}
+
+.nav-btn {
+    color: var(--nav-text);
+}
+
+.nav-btn:hover { color: white; }
