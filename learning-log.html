@@ -1,12 +1,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-<style>body { font-family: 'Inter', sans-serif; padding: 2rem; } .note { background: #f1f5f9; padding: 1rem; border-radius: 8px; margin-bottom: 10px; }</style>
+<style>body { font-family: 'Inter', sans-serif; padding: 2rem; } .card { background: white; padding: 1rem; border-radius: 10px; border-left: 5px solid #2563eb; margin-bottom: 1rem; border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }</style>
 <h2>Knowledge Base</h2>
-<div class="note">
+<div class="card">
     <strong>Topic: RAG Architecture</strong>
     <p>Connecting Gemini 1.5 Pro to Vector Databases for PDF parsing.</p>
 </div>
-<div class="note">
+<div class="card">
     <strong>Topic: GitHub Actions</strong>
     <p>Automating site rebuilds upon every git push.</p>
 </div>
+<script>
+    // Check what theme the parent window is using
+    const savedTheme = localStorage.getItem('selected-theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+</script>
