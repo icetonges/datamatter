@@ -3,36 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>House Project Map View</title>
+    <title>House Project | Interactive Map</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f8f9fa; color: #333; }
-        .container { max-width: 1200px; margin: auto; }
-        #map { height: 500px; width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        /* Dark Theme Variables */
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #007bff;
+            --border-color: #333;
+        }
+
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+        }
+
+        .container { max-width: 1400px; margin: auto; }
         
+        h1, h3 { color: #fff; letter-spacing: -0.5px; }
+
+        /* Map Styling */
+        #map { 
+            height: 600px; 
+            width: 100%; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            margin-bottom: 40px; 
+        }
+
+        /* Tooltip Styling (Hover) */
+        .property-tooltip {
+            background: var(--card-bg);
+            color: white;
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .tooltip-img {
+            width: 150px;
+            border-radius: 4px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
         /* Table Styling */
-        .table-wrapper { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 14px; border-bottom: 1px solid #eee; text-align: left; }
-        th { background-color: #007bff; color: white; text-transform: uppercase; font-size: 12px; }
-        tr:hover { background-color: #f1f7ff; }
+        .table-wrapper { 
+            overflow-x: auto; 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            border: 1px solid var(--border-color);
+        }
         
-        .nav-back { margin-bottom: 20px; display: inline-block; text-decoration: none; color: #007bff; font-weight: bold; }
-        .error-msg { color: #dc3545; padding: 20px; background: #fff5f5; border: 1px solid #ffc1c1; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        
+        th { 
+            background-color: #252525; 
+            color: var(--accent-color); 
+            text-align: left; 
+            padding: 16px; 
+            position: sticky; 
+            top: 0; 
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        td { padding: 14px; border-bottom: 1px solid var(--border-color); }
+        tr:hover { background-color: #2a2a2a; }
+
+        /* Redfin Link Button */
+        .redfin-link {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #c82333;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .redfin-link:hover { background: #ff0000; }
+
+        .nav-back { color: var(--accent-color); text-decoration: none; margin-bottom: 20px; display: block; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="index.html" class="nav-back">← Back to Main Page</a>
+    <a href="index.html" class="nav-back">← Back to Dashboard</a>
     <h1>House Project Interactive Display</h1>
     
     <div id="map"></div>
 
     <h3>Detailed Project Data</h3>
     <div id="table-container" class="table-wrapper">
-        <p style="padding: 20px;">Searching for Excel data...</p>
+        <p style="padding: 20px;">Loading properties...</p>
     </div>
 </div>
 
@@ -40,48 +110,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-    // 1. Initialize the Map centered on a neutral location
     const map = L.map('map').setView([0, 0], 2); 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+    
+    // Using a Dark Mode Map Provider
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
     }).addTo(map);
 
     async function loadHouseData() {
-        // CORRECTED PATH: Ensure this matches your GitHub folder structure
-        const filePath = 'data/houseproject1/ddd.xlsx'; 
-        
         try {
-            const response = await fetch(filePath);
-            if (!response.ok) throw new Error(`Could not find the file at ${filePath}`);
-
+            const response = await fetch('data/houseproject1/ddd.xlsx');
             const arrayBuffer = await response.arrayBuffer();
             const data = new Uint8Array(arrayBuffer);
             const workbook = XLSX.read(data, {type: 'array'});
-            
-            // AUTOMATIC SHEET SELECTION: This picks the first tab regardless of its name
-            const firstSheetName = workbook.SheetNames[0]; 
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-            if (!jsonData || jsonData.length === 0) {
-                throw new Error("The Excel file appears to be empty.");
-            }
-
-            renderPage(jsonData);
+            renderContent(jsonData);
         } catch (error) {
-            console.error("Initialization Error:", error);
-            document.getElementById('table-container').innerHTML = `
-                <div class="error-msg">
-                    <strong>Error:</strong> ${error.message}<br>
-                    <small>Make sure the file <b>ddd.xlsx</b> is uploaded to the <b>data/houseproject1/</b> folder in GitHub.</small>
-                </div>`;
+            document.getElementById('table-container').innerHTML = `<p style="color:red; padding:20px;">Error: ${error.message}</p>`;
         }
     }
 
-    function renderPage(data) {
+    function renderContent(data) {
         const tableContainer = document.getElementById('table-container');
         const bounds = [];
         
-        // Build Table
         let tableHTML = '<table><thead><tr>';
         const headers = Object.keys(data[0]);
         headers.forEach(h => tableHTML += `<th>${h}</th>`);
@@ -89,32 +142,46 @@
 
         data.forEach(row => {
             tableHTML += '<tr>';
-            headers.forEach(h => tableHTML += `<td>${row[h] || '-'}</td>`);
+            headers.forEach(h => {
+                let cellData = row[h] || '-';
+                
+                // Logic for Redfin Link
+                if (h.toLowerCase().includes('redfin') && cellData.startsWith('http')) {
+                    cellData = `<a href="${cellData}" target="_blank" class="redfin-link">View on Redfin</a>`;
+                }
+                tableHTML += `<td>${cellData}</td>`;
+            });
             tableHTML += '</tr>';
 
-            // Add Markers to Map (Checks for Latitude/Longitude columns)
-            // Tip: Ensure Excel headers are "Latitude" and "Longitude"
-            const lat = row.Latitude || row.lat || row.LATITUDE;
-            const lng = row.Longitude || row.lng || row.LONGITUDE;
+            // Map Markers with Tooltips
+            const lat = row.Latitude || row.lat;
+            const lng = row.Longitude || row.lng;
 
             if (lat && lng) {
-                const marker = L.marker([lat, lng])
-                    .bindPopup(`<b>Project:</b> ${row.ProjectName || 'View Details'}<br><b>Status:</b> ${row.Status || 'Active'}`)
-                    .addTo(map);
+                const marker = L.marker([lat, lng]).addTo(map);
+                
+                // Construct the Hover Card
+                const popupContent = `
+                    <div class="property-tooltip">
+                        ${row.Image ? `<img src="${row.Image}" class="tooltip-img">` : ''}
+                        <div style="font-weight:bold; font-size:16px; color:#fff;">${row.Price || 'N/A'}</div>
+                        <div style="font-size:12px; margin:4px 0;">
+                            📏 Size: ${row.Size || '-'} | Lot: ${row.LotSize || '-'}
+                        </div>
+                        <div style="color:${row.Status === 'Active' ? '#28a745' : '#ffc107'}">${row.Status || ''}</div>
+                    </div>
+                `;
+                
+                marker.bindTooltip(popupContent, { sticky: true, className: 'property-tooltip-container' });
                 bounds.push([lat, lng]);
             }
         });
 
         tableHTML += '</tbody></table>';
         tableContainer.innerHTML = tableHTML;
-
-        // Auto-adjust map zoom to show all pins
-        if (bounds.length > 0) {
-            map.fitBounds(bounds, { padding: [40, 40] });
-        }
+        if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
     }
 
-    // Start the process
     loadHouseData();
 </script>
 </body>
