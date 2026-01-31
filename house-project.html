@@ -7,26 +7,32 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
-        #map { height: 500px; width: 100%; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f8f9fa; color: #333; }
         .container { max-width: 1200px; margin: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
-        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        .nav-back { margin-bottom: 20px; display: inline-block; text-decoration: none; color: #007bff; }
+        #map { height: 500px; width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        
+        /* Table Styling */
+        .table-wrapper { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background-color: #007bff; color: white; text-transform: uppercase; font-size: 12px; }
+        tr:hover { background-color: #f1f7ff; }
+        
+        .nav-back { margin-bottom: 20px; display: inline-block; text-decoration: none; color: #007bff; font-weight: bold; }
+        .error-msg { color: #dc3545; padding: 20px; background: #fff5f5; border: 1px solid #ffc1c1; border-radius: 8px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="index.html" class="nav-back">← Back to Dashboard</a>
+    <a href="index.html" class="nav-back">← Back to Main Page</a>
     <h1>House Project Interactive Display</h1>
     
     <div id="map"></div>
 
-    <h3>Project Details</h3>
-    <div id="table-container">
-        <p>Loading data from Excel...</p>
+    <h3>Detailed Project Data</h3>
+    <div id="table-container" class="table-wrapper">
+        <p style="padding: 20px;">Searching for Excel data...</p>
     </div>
 </div>
 
@@ -34,65 +40,81 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-    // 1. Initialize the Map
+    // 1. Initialize the Map centered on a neutral location
     const map = L.map('map').setView([0, 0], 2); 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // 2. Fetch and Process Excel Data
     async function loadHouseData() {
+        // CORRECTED PATH: Ensure this matches your GitHub folder structure
+        const filePath = 'data/houseproject1/ddd.xlsx'; 
+        
         try {
-            // Update 'ddd.xlsx' to your actual filename
-            const response = await fetch('data/houseproject1/ddd.xlsx');
+            const response = await fetch(filePath);
+            if (!response.ok) throw new Error(`Could not find the file at ${filePath}`);
+
             const arrayBuffer = await response.arrayBuffer();
             const data = new Uint8Array(arrayBuffer);
             const workbook = XLSX.read(data, {type: 'array'});
             
-            const firstSheetName = workbook.sheet1[0];
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet1]);
+            // AUTOMATIC SHEET SELECTION: This picks the first tab regardless of its name
+            const firstSheetName = workbook.SheetNames[0]; 
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
 
-            renderContent(jsonData);
+            if (!jsonData || jsonData.length === 0) {
+                throw new Error("The Excel file appears to be empty.");
+            }
+
+            renderPage(jsonData);
         } catch (error) {
-            console.error("Error loading Excel file:", error);
-            document.getElementById('table-container').innerHTML = "Error loading data. Check file path.";
+            console.error("Initialization Error:", error);
+            document.getElementById('table-container').innerHTML = `
+                <div class="error-msg">
+                    <strong>Error:</strong> ${error.message}<br>
+                    <small>Make sure the file <b>ddd.xlsx</b> is uploaded to the <b>data/houseproject1/</b> folder in GitHub.</small>
+                </div>`;
         }
     }
 
-    function renderContent(data) {
+    function renderPage(data) {
         const tableContainer = document.getElementById('table-container');
-        let tableHTML = '<table><tr>';
+        const bounds = [];
         
-        // Create Table Headers from first row keys
+        // Build Table
+        let tableHTML = '<table><thead><tr>';
         const headers = Object.keys(data[0]);
         headers.forEach(h => tableHTML += `<th>${h}</th>`);
-        tableHTML += '</tr>';
+        tableHTML += '</tr></thead><tbody>';
 
-        // Create Markers and Table Rows
-        const bounds = [];
         data.forEach(row => {
             tableHTML += '<tr>';
-            headers.forEach(h => tableHTML += `<td>${row[h] || ''}</td>`);
+            headers.forEach(h => tableHTML += `<td>${row[h] || '-'}</td>`);
             tableHTML += '</tr>';
 
-            // If row has Latitude and Longitude, add to map
-            if (row.Latitude && row.Longitude) {
-                const marker = L.marker([row.Latitude, row.Longitude])
-                    .bindPopup(`<b>Project:</b> ${row.ProjectName || 'Details'}<br><b>Status:</b> ${row.Status || 'N/A'}`)
+            // Add Markers to Map (Checks for Latitude/Longitude columns)
+            // Tip: Ensure Excel headers are "Latitude" and "Longitude"
+            const lat = row.Latitude || row.lat || row.LATITUDE;
+            const lng = row.Longitude || row.lng || row.LONGITUDE;
+
+            if (lat && lng) {
+                const marker = L.marker([lat, lng])
+                    .bindPopup(`<b>Project:</b> ${row.ProjectName || 'View Details'}<br><b>Status:</b> ${row.Status || 'Active'}`)
                     .addTo(map);
-                bounds.push([row.Latitude, row.Longitude]);
+                bounds.push([lat, lng]);
             }
         });
 
-        tableHTML += '</table>';
+        tableHTML += '</tbody></table>';
         tableContainer.innerHTML = tableHTML;
 
-        // Auto-zoom map to fit all markers
+        // Auto-adjust map zoom to show all pins
         if (bounds.length > 0) {
-            map.fitBounds(bounds);
+            map.fitBounds(bounds, { padding: [40, 40] });
         }
     }
 
+    // Start the process
     loadHouseData();
 </script>
 </body>
