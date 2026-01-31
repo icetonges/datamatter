@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Project Map View</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
+        #map { height: 500px; width: 100%; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 1200px; margin: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        .nav-back { margin-bottom: 20px; display: inline-block; text-decoration: none; color: #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html" class="nav-back">← Back to Dashboard</a>
+    <h1>House Project Interactive Display</h1>
+    
+    <div id="map"></div>
+
+    <h3>Project Details</h3>
+    <div id="table-container">
+        <p>Loading data from Excel...</p>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+    // 1. Initialize the Map
+    const map = L.map('map').setView([0, 0], 2); 
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 2. Fetch and Process Excel Data
+    async function loadHouseData() {
+        try {
+            // Update 'your_file.xlsx' to your actual filename
+            const response = await fetch('data/houseproject1/your_file.xlsx');
+            const arrayBuffer = await response.arrayBuffer();
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, {type: 'array'});
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+
+            renderContent(jsonData);
+        } catch (error) {
+            console.error("Error loading Excel file:", error);
+            document.getElementById('table-container').innerHTML = "Error loading data. Check file path.";
+        }
+    }
+
+    function renderContent(data) {
+        const tableContainer = document.getElementById('table-container');
+        let tableHTML = '<table><tr>';
+        
+        // Create Table Headers from first row keys
+        const headers = Object.keys(data[0]);
+        headers.forEach(h => tableHTML += `<th>${h}</th>`);
+        tableHTML += '</tr>';
+
+        // Create Markers and Table Rows
+        const bounds = [];
+        data.forEach(row => {
+            tableHTML += '<tr>';
+            headers.forEach(h => tableHTML += `<td>${row[h] || ''}</td>`);
+            tableHTML += '</tr>';
+
+            // If row has Latitude and Longitude, add to map
+            if (row.Latitude && row.Longitude) {
+                const marker = L.marker([row.Latitude, row.Longitude])
+                    .bindPopup(`<b>Project:</b> ${row.ProjectName || 'Details'}<br><b>Status:</b> ${row.Status || 'N/A'}`)
+                    .addTo(map);
+                bounds.push([row.Latitude, row.Longitude]);
+            }
+        });
+
+        tableHTML += '</table>';
+        tableContainer.innerHTML = tableHTML;
+
+        // Auto-zoom map to fit all markers
+        if (bounds.length > 0) {
+            map.fitBounds(bounds);
+        }
+    }
+
+    loadHouseData();
+</script>
+</body>
+</html>
