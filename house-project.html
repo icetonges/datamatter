@@ -43,14 +43,14 @@
     // 2. Fetch and Process Excel Data
     async function loadHouseData() {
         try {
-            // Update 'your_file.xlsx' to your actual filename
-            const response = await fetch('data/houseproject1/your_file.xlsx');
+            // Update 'ddd.xlsx' to your actual filename
+            const response = await fetch('data/houseproject1/ddd.xlsx');
             const arrayBuffer = await response.arrayBuffer();
             const data = new Uint8Array(arrayBuffer);
             const workbook = XLSX.read(data, {type: 'array'});
             
-            const firstSheetName = workbook.SheetNames[0];
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+            const firstSheetName = workbook.sheet1[0];
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet1]);
 
             renderContent(jsonData);
         } catch (error) {
