@@ -1,10 +1,10 @@
-// CONFIG: Paths
+// CONFIG: Fixed paths including the 'datamatter' repository name
 const REPORT_PATH = 'datamatter/data/houseproject1/report.json';
-const EXCEL_PATH = 'data/houseproject1/ddd.xlsx';
+const EXCEL_PATH = 'datamatter/data/houseproject1/ddd.xlsx'; 
 
 let globalData = [];
 let sortConfig = { key: null, direction: 'asc' };
-let map; // Define globally to avoid initialization errors
+let map; 
 
 // Initialize everything on load
 window.onload = () => {
@@ -23,6 +23,13 @@ function initMap() {
         attribution: '&copy; CARTO' 
     }).addTo(map);
 }
+
+// Helper to format currency correctly
+const formatCurrency = (value) => {
+    if (!value) return '-';
+    const num = parseFloat(String(value).replace(/[$,]/g, ''));
+    return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
 
 // 1. Fetch JSON Strategic Report
 async function loadStrategicReport() {
@@ -50,6 +57,7 @@ async function loadStrategicReport() {
         }
     } catch (error) {
         console.error("Report Load Error:", error);
+        document.getElementById('insights-section').innerHTML = `<p style="color: #ff6b6b;">Summary data unavailable. (Path: ${REPORT_PATH})</p>`;
     }
 }
 
@@ -57,21 +65,16 @@ async function loadStrategicReport() {
 async function initExcelData() {
     try {
         const response = await fetch(EXCEL_PATH);
+        if (!response.ok) throw new Error('Excel file not found');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
         globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
         renderAll();
     } catch (error) {
-        document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel: ${error.message}</p>`;
+        console.error("Excel Load Error:", error);
+        document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel data from: ${EXCEL_PATH}</p>`;
     }
 }
-
-// --- RENDERING LOGIC ---
-const formatCurrency = (value) => {
-    if (!value) return '-';
-    const num = parseFloat(String(value).replace(/[$,]/g, ''));
-    return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
-};
 
 function renderAll() {
     renderMap(globalData);
@@ -89,9 +92,8 @@ function renderMap(data) {
             const marker = L.marker([lat, lng]).addTo(map);
             marker.bindTooltip(`
                 <div class="property-tooltip">
-                    ${row.Image ? `<img src="${row.Image}" class="tooltip-img">` : ''}
-                    <div style="font-size: 16px; font-weight: bold; color: white;">${formatCurrency(row.Price)}</div>
-                    <div style="font-size: 12px; margin: 5px 0; color: #ccc;">📏 ${row.Size || '-'} sqft</div>
+                    <div style="font-size: 14px; font-weight: bold; color: white;">${formatCurrency(row.Price)}</div>
+                    <div style="font-size: 11px; color: #ccc;">${row.ProjectName || 'Property'}</div>
                 </div>`, { sticky: true, direction: 'right' });
             bounds.push([lat, lng]);
         }
@@ -108,7 +110,9 @@ function renderTable(data) {
         html += '<tr>' + headers.map(h => {
             let val = row[h] || '-';
             if (h.toLowerCase() === 'price') val = formatCurrency(val);
-            if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) val = `<a href="${val}" target="_blank" class="redfin-link">Redfin</a>`;
+            if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) {
+                val = `<a href="${val}" target="_blank" class="redfin-link">Redfin</a>`;
+            }
             return `<td>${val}</td>`;
         }).join('') + '</tr>';
     });
