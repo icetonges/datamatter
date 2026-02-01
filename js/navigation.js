@@ -1,53 +1,108 @@
 // ============================================================
 // navigation.js — House Project Explorer
+// Works standalone OR inside an <iframe> within a parent shell.
 // ============================================================
 
-// CONFIG: Purely relative paths (works on GitHub Pages)
 const REPORT_PATH = 'data/houseproject1/report.json';
 const EXCEL_PATH  = 'data/houseproject1/ddd.xlsx';
 
-let globalData = [];
-let map;
-let markerGroup; // holds all map markers so we can fitBounds later
+let globalData  = [];
+let map         = null;
+let markerGroup = null;
+let darkLayer   = null;
+let lightLayer  = null;
 
-// ─── Entry Point ────────────────────────────────────────────
-window.onload = async () => {
-    // 1. Theme
+// ─── Entry ──────────────────────────────────────────────────
+// Use DOMContentLoaded instead of window.onload.
+// window.onload waits for ALL sub-resources (images, iframes, external scripts).
+// Inside an iframe that itself loads Leaflet + XLSX from CDNs, onload can fire
+// before those CDN scripts have finished executing, so L or XLSX may be undefined.
+// DOMContentLoaded fires once the DOM is parsed; we then explicitly wait for the
+// external libs with a small poll before proceeding.
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('[HouseProjExplorer] DOM ready. Initialising…');
+
+    // 1. Apply theme (reads parent if in iframe, else uses own localStorage)
     applyTheme();
 
-    // 2. Map
-    try {
-        if (typeof L !== 'undefined') {
-            initMap();
-        } else {
-            throw new Error("Leaflet library failed to load. Check your network connection.");
-        }
-    } catch (e) {
-        showError("Map Error: " + e.message);
-    }
+    // 2. Wait for Leaflet + XLSX to actually be available (CDN scripts can be slow)
+    await waitForLibs();
 
-    // 3. Data (run concurrently — each handles its own errors)
+    // 3. Init map
+    initMap();
+
+    // 4. Load data — fire both concurrently, each handles its own errors
     await Promise.all([
         loadStrategicReport(),
         loadExcelData()
     ]);
-};
+
+    console.log('[HouseProjExplorer] Init complete.');
+});
+
+// ─── Wait for CDN libs ──────────────────────────────────────
+// Polls for up to 5 seconds. This is the reliable way to handle async CDN script loading.
+function waitForLibs() {
+    return new Promise((resolve) => {
+        const start = Date.now();
+        function check() {
+            const leafletOk = typeof L !== 'undefined';
+            const xlsxOk   = typeof XLSX !== 'undefined';
+            if ((leafletOk && xlsxOk) || (Date.now() - start > 5000)) {
+                if (!leafletOk) console.warn('[HouseProjExplorer] Leaflet did not load within 5s.');
+                if (!xlsxOk)   console.warn('[HouseProjExplorer] XLSX did not load within 5s.');
+                resolve();
+            } else {
+                setTimeout(check, 100);
+            }
+        }
+        check();
+    });
+}
 
 // ─── Theme ──────────────────────────────────────────────────
 function applyTheme() {
-    const saved = localStorage.getItem('selected-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
-    updateToggleLabel(saved);
+    let theme;
+
+    // If we're inside an iframe, try to read the parent's theme first
+    try {
+        if (window.parent && window.parent !== window) {
+            const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
+            if (parentTheme) {
+                theme = parentTheme;
+                console.log('[HouseProjExplorer] Synced theme from parent:', theme);
+            }
+        }
+    } catch (e) {
+        // Cross-origin parent — can't access, fall through to own localStorage
+    }
+
+    // Fallback: own localStorage, then default to 'light' to match parent's default
+    if (!theme) {
+        theme = localStorage.getItem('selected-theme') || 'light';
+    }
+
+    document.documentElement.setAttribute('data-theme', theme);
+    updateToggleLabel(theme);
 }
 
 function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
     const next    = current === 'dark' ? 'light' : 'dark';
+
+    // Set on this document
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('selected-theme', next);
     updateToggleLabel(next);
 
-    // Swap map tile layer to match theme
+    // Try to sync to parent as well
+    try {
+        if (window.parent && window.parent !== window) {
+            window.parent.document.documentElement.setAttribute('data-theme', next);
+        }
+    } catch (e) { /* cross-origin, ignore */ }
+
+    // Swap map tiles
     swapMapTiles(next);
 }
 
@@ -57,112 +112,123 @@ function updateToggleLabel(theme) {
 }
 
 // ─── Map ────────────────────────────────────────────────────
-let darkLayer, lightLayer;
-
 function initMap() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl) { console.error('[HouseProjExplorer] #map element not found.'); return; }
+
+    if (typeof L === 'undefined') {
+        console.error('[HouseProjExplorer] Leaflet not available — map will not render.');
+        mapEl.innerHTML = '<div class="error-inline" style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"><div class="error-title">⚠ Map Failed</div><div class="error-detail">Leaflet library could not be loaded.</div></div>';
+        return;
+    }
+
     map = L.map('map').setView([0, 0], 2);
 
-    // Two tile layers so we can swap on theme change
     darkLayer = L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 19 }
+        { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 }
     );
     lightLayer = L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        { attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 19 }
+        { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 }
     );
 
-    // Start with whichever theme is active
-    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
     (theme === 'dark' ? darkLayer : lightLayer).addTo(map);
 
-    // Layer group for all markers (lets us fitBounds easily)
     markerGroup = L.layerGroup().addTo(map);
+    console.log('[HouseProjExplorer] Map initialised.');
 }
 
 function swapMapTiles(theme) {
     if (!map) return;
-    if (theme === 'dark') {
-        map.removeLayer(lightLayer);
-        darkLayer.addTo(map);
-    } else {
-        map.removeLayer(darkLayer);
-        lightLayer.addTo(map);
-    }
+    try {
+        if (map.hasLayer(lightLayer)) map.removeLayer(lightLayer);
+        if (map.hasLayer(darkLayer))  map.removeLayer(darkLayer);
+    } catch (e) { /* layer wasn't added yet, safe to ignore */ }
+    (theme === 'dark' ? darkLayer : lightLayer).addTo(map);
 }
 
-// ─── Strategic Report (JSON) ────────────────────────────────
+// ─── Strategic Report ───────────────────────────────────────
 async function loadStrategicReport() {
     const container = document.getElementById('insights-section');
-    if (!container) return;
+    if (!container) { console.error('[HouseProjExplorer] #insights-section not found.'); return; }
 
     try {
+        console.log('[HouseProjExplorer] Fetching report from:', REPORT_PATH);
         const response = await fetch(REPORT_PATH);
-        if (!response.ok) throw new Error(`Report not found (${response.status})`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} — report.json not found at "${REPORT_PATH}".`);
+        }
 
         const data = await response.json();
 
-        // FIX: null-check the key AND confirm it's an array before calling .map()
-        const insights = data && Array.isArray(data.strategicInsights) ? data.strategicInsights : null;
-        if (!insights || insights.length === 0) {
-            throw new Error("Report JSON has no 'strategicInsights' array.");
+        // Validate structure before using
+        if (!data || !Array.isArray(data.strategicInsights) || data.strategicInsights.length === 0) {
+            throw new Error('report.json exists but has no valid "strategicInsights" array.');
         }
 
-        container.innerHTML = insights.map(item => `
+        container.innerHTML = data.strategicInsights.map(item => `
             <div class="insight-card">
-                <h4>${escapeHtml(item.title || 'Untitled')}</h4>
+                <h4>${escapeHtml(item.title  || 'Untitled')}</h4>
                 <p>${escapeHtml(item.content || 'No details available.')}</p>
             </div>
         `).join('');
 
+        console.log('[HouseProjExplorer] Report loaded — ' + data.strategicInsights.length + ' insights.');
+
     } catch (error) {
-        // FIX: show a visible fallback instead of leaving "Loading..." forever
+        console.error('[HouseProjExplorer] Report failed:', error.message);
+
+        // Replace the loading placeholder with a visible error card
         container.innerHTML = `
-            <div class="insight-card" style="border-color: var(--error-border); background: var(--error-bg);">
-                <h4 style="color: var(--error-text);">⚠ Strategic Insights Unavailable</h4>
-                <p style="color: var(--error-text);">${escapeHtml(error.message)}</p>
+            <div class="error-inline">
+                <div class="error-title">⚠ Strategic Insights Unavailable</div>
+                <div class="error-detail">${escapeHtml(error.message)}</div>
             </div>`;
-        console.warn("Report load failed:", error.message);
     }
 }
 
 // ─── Excel Data ─────────────────────────────────────────────
 async function loadExcelData() {
-    const tableContainer = document.getElementById('table-container');
-    if (!tableContainer) return;
+    const container = document.getElementById('table-container');
+    if (!container) { console.error('[HouseProjExplorer] #table-container not found.'); return; }
 
-    // Show spinner while loading
-    tableContainer.innerHTML = `
-        <div class="loading-state">
-            <div class="spinner"></div>
-            Fetching property data…
-        </div>`;
+    if (typeof XLSX === 'undefined') {
+        console.error('[HouseProjExplorer] XLSX library not available.');
+        container.innerHTML = renderErrorInline('XLSX library failed to load from CDN.');
+        return;
+    }
 
     try {
+        console.log('[HouseProjExplorer] Fetching Excel from:', EXCEL_PATH);
         const response = await fetch(EXCEL_PATH);
-        if (!response.ok) throw new Error(`Excel file not found at "${EXCEL_PATH}" (HTTP ${response.status})`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} — Excel file not found at "${EXCEL_PATH}".`);
+        }
 
         const arrayBuffer = await response.arrayBuffer();
 
-        // FIX: pass the raw ArrayBuffer with type:'buffer' — Uint8Array + type:'array' is incorrect
-        const workbook = XLSX.read(arrayBuffer, { type: 'buffer' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        globalData = XLSX.utils.sheet_to_json(firstSheet);
+        // XLSX.read with an ArrayBuffer requires type:'buffer'
+        const workbook    = XLSX.read(arrayBuffer, { type: 'buffer' });
+        const sheetName   = workbook.SheetNames[0];
+        const sheet       = workbook.Sheets[sheetName];
+        globalData        = XLSX.utils.sheet_to_json(sheet);
 
         if (!globalData || globalData.length === 0) {
-            throw new Error("Excel file is empty or has no parseable rows.");
+            throw new Error('Excel file parsed successfully but contains no data rows.');
         }
+
+        console.log('[HouseProjExplorer] Excel loaded — ' + globalData.length + ' rows from sheet "' + sheetName + '".');
 
         renderTable();
         renderMapMarkers();
 
     } catch (error) {
-        showError("Data Error: " + error.message);
-        tableContainer.innerHTML = `
-            <div class="loading-state" style="color: var(--error-text);">
-                ⚠ Could not load property data.<br>
-                <span style="font-size:12px; opacity:0.7;">${escapeHtml(error.message)}</span>
-            </div>`;
+        console.error('[HouseProjExplorer] Excel failed:', error.message);
+        container.innerHTML = renderErrorInline(error.message);
     }
 }
 
@@ -173,22 +239,26 @@ function renderTable() {
 
     const headers = Object.keys(globalData[0]);
 
-    // Update row count badge
+    // Update row count
     const countEl = document.getElementById('rowCount');
     if (countEl) countEl.textContent = globalData.length + ' properties';
 
     let html = '<table><thead><tr>'
-        + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')
-        + '</tr></thead><tbody>';
+             + headers.map(h => '<th>' + escapeHtml(h) + '</th>').join('')
+             + '</tr></thead><tbody>';
 
     globalData.forEach(row => {
         html += '<tr>' + headers.map(h => {
             const val = row[h];
-            // Format numbers with commas if they look like currency/large numbers
-            const display = (typeof val === 'number' && val >= 1000)
-                ? val.toLocaleString()
-                : (val !== undefined && val !== null ? String(val) : '—');
-            return `<td>${escapeHtml(display)}</td>`;
+            let display;
+            if (val === undefined || val === null) {
+                display = '—';
+            } else if (typeof val === 'number' && val >= 1000) {
+                display = val.toLocaleString();
+            } else {
+                display = String(val);
+            }
+            return '<td>' + escapeHtml(display) + '</td>';
         }).join('') + '</tr>';
     });
 
@@ -197,62 +267,70 @@ function renderTable() {
 
 // ─── Render Map Markers ─────────────────────────────────────
 function renderMapMarkers() {
-    if (!map || !markerGroup) return;
+    if (!map || !markerGroup) {
+        console.warn('[HouseProjExplorer] Map not ready — skipping marker render.');
+        return;
+    }
 
-    markerGroup.clearLayers(); // remove old markers on re-render
+    markerGroup.clearLayers();
+    let markerCount = 0;
 
-    let hasMarkers = false;
+    globalData.forEach((row, i) => {
+        // Try every common column name variant for coordinates
+        const lat = parseFloat(
+            row.Latitude  || row.latitude  || row.lat || row.Lat || row.LAT || ''
+        );
+        const lng = parseFloat(
+            row.Longitude || row.longitude || row.lng || row.Lng || row.LNG || row.Long || ''
+        );
 
-    globalData.forEach(row => {
-        // Support common column-name variants
-        const lat = parseFloat(row.Latitude || row.latitude || row.lat || row.Lat);
-        const lng = parseFloat(row.Longitude || row.longitude || row.lng || row.Lng || row.Long);
+        if (isNaN(lat) || isNaN(lng)) return;
 
-        if (isNaN(lat) || isNaN(lng)) return; // skip rows without valid coords
+        markerCount++;
 
-        hasMarkers = true;
-
-        // FIX: build a proper string tooltip — coerce everything and provide fallback
-        const name  = row.Name || row.name || row.Property || row.Title || 'Property';
+        // Build tooltip + popup strings safely
+        const name  = String(row.Name || row.name || row.Property || row.Title || ('Property #' + (i + 1)));
         const price = row.Price || row.price || '';
-        const label = price
-            ? `${String(name)} — $${Number(price).toLocaleString()}`
-            : String(name);
+        const tooltipText = price
+            ? name + ' — $' + Number(price).toLocaleString()
+            : name;
+
+        const popupHtml = '<strong>' + escapeHtml(name) + '</strong><br>'
+            + 'Coordinates: ' + lat.toFixed(4) + ', ' + lng.toFixed(4)
+            + (price ? '<br>Price: $' + Number(price).toLocaleString() : '');
 
         L.marker([lat, lng])
             .addTo(markerGroup)
-            .bindTooltip(label, { permanent: false, direction: 'top' })
-            .bindPopup(`<strong>${escapeHtml(String(name))}</strong><br>
-                        Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}
-                        ${price ? '<br>Price: $' + Number(price).toLocaleString() : ''}`);
+            .bindTooltip(tooltipText, { permanent: false, direction: 'top' })
+            .bindPopup(popupHtml);
     });
 
-    // FIX: auto-zoom the map to fit all markers after plotting
-    if (hasMarkers) {
-        map.fitBounds(markerGroup.getBounds(), { padding: [40, 40] });
+    console.log('[HouseProjExplorer] Plotted ' + markerCount + ' markers.');
+
+    // Auto-zoom to fit all markers
+    if (markerCount > 0) {
+        try {
+            map.fitBounds(markerGroup.getBounds(), { padding: [30, 30] });
+        } catch (e) {
+            console.warn('[HouseProjExplorer] fitBounds failed:', e.message);
+        }
     }
 }
 
 // ─── Helpers ────────────────────────────────────────────────
 
-// Prevents XSS when injecting user data into HTML
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(String(str)));
     return div.innerHTML;
 }
 
-// Shows an error banner at the top of the page
-function showError(msg) {
-    // Don't stack duplicate banners
-    const existing = document.querySelector('.error-banner');
-    if (existing) existing.remove();
-
-    const banner = document.createElement('div');
-    banner.className = 'error-banner';
-    banner.innerHTML = `<span class="error-icon">⚠️</span><span>${escapeHtml(msg)}</span>`;
-    document.querySelector('.container').prepend(banner);
+function renderErrorInline(msg) {
+    return '<div class="error-inline">'
+         + '<div class="error-title">⚠ Could not load property data</div>'
+         + '<div class="error-detail">' + escapeHtml(msg) + '</div>'
+         + '</div>';
 }
 
-// Expose toggleTheme globally so the HTML button can call it
+// Global so the HTML button's onclick can call it
 window.toggleTheme = toggleTheme;
