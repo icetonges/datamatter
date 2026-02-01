@@ -1,6 +1,6 @@
 // CONFIG: Fixed paths to match your 'datamatter' folder structure
-const REPORT_PATH = 'datamatter/data/houseproject1/report.json';
-const EXCEL_PATH = 'datamatter/data/houseproject1/ddd.xlsx'; 
+const REPORT_PATH = 'data/houseproject1/report.json';
+const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
 
 let globalData = [];
 let sortConfig = { key: null, direction: 'asc' };
