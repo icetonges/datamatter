@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DataMatter Hub | Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
     <style>
         /* 1. DEFINE THEME VARIABLES */
         :root { 
@@ -17,7 +16,7 @@
 
         /* 2. DARK MODE OVERRIDES */
         [data-theme="dark"] {
-            --sidebar-dark: #020617; /* Deeper black/blue */
+            --sidebar-dark: #020617; 
             --primary-blue: #3b82f6; 
             --nav-text: #64748b;
             --iframe-bg: #0f172a;
@@ -48,12 +47,12 @@
             margin-bottom: 5px; 
             font-size: 14px; 
             transition: 0.2s; 
+            width: 100%;
         }
 
         .nav-btn:hover { background: #1e293b; color: white; }
         .nav-btn.active { background: var(--primary-blue); color: white; }
         
-        /* 3. IFRAME BACKGROUND SYNC */
         iframe { flex-grow: 1; border: none; background: var(--iframe-bg); transition: 0.3s; }
     </style>
 </head>
@@ -61,13 +60,12 @@
 
 <nav>
     <h1>DataMatter Hub</h1>
-    <button class="nav-btn active" onclick="loadPage(this, 'dashboard.html')">🏠 Dashboard</button>
-    <button class="nav-btn" onclick="loadPage(this, 'projects.html')">📂 Projects</button>
-    <button class="nav-btn" onclick="loadPage(this, 'google-ai.html')">☁️ Google AI Suite</button>
-    <button class="nav-btn" onclick="loadPage(this, 'learning-log.html')">📝 Learning Log</button>
-    <button class="nav-btn" onclick="loadPage(this, 'house-project.html')">📝 House Research Project</button>
+    <button class="nav-btn active" onclick="loadPage(this, './dashboard.html')">🏠 Dashboard</button>
+    <button class="nav-btn" onclick="loadPage(this, './projects.html')">📂 Projects</button>
+    <button class="nav-btn" onclick="loadPage(this, './google-ai.html')">🤖 Google AI Suite</button>
+    <button class="nav-btn" onclick="loadPage(this, './learning-log.html')">📝 Learning Log</button>
+    <button class="nav-btn" onclick="loadPage(this, './house-project.html')">🏡 House Research Project</button>
 
-    
     <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid #334155;">
         <button class="nav-btn" onclick="toggleTheme()" style="width: 100%; border: 1px solid #334155;">
             🌓 Switch Theme
@@ -75,17 +73,19 @@
     </div>
 </nav>
 
-<iframe src="dashboard.html" id="content-frame"></iframe>
+<iframe src="./dashboard.html" id="content-frame"></iframe>
 
 <script>
     // LOAD PAGE FUNCTION
     function loadPage(btn, url) {
         const frame = document.getElementById('content-frame');
         frame.src = url;
+        
+        // Update active button state
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        // Apply current theme to the new page when it finishes loading
+        // Apply theme to the new page once it loads
         frame.onload = function() {
             syncThemeToIframe();
         };
@@ -98,15 +98,15 @@
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         
         root.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme); // Remember choice
+        localStorage.setItem('theme', newTheme);
         syncThemeToIframe();
     }
 
-    // SYNC FUNCTION (Tells the iframe to change color too)
+    // SYNC FUNCTION
     function syncThemeToIframe() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const frame = document.getElementById('content-frame');
-        if (frame.contentDocument) {
+        if (frame && frame.contentDocument) {
             frame.contentDocument.documentElement.setAttribute('data-theme', currentTheme);
         }
     }
@@ -115,7 +115,10 @@
     window.onload = () => {
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        syncThemeToIframe();
+        
+        // Ensure initial iframe content is themed
+        const frame = document.getElementById('content-frame');
+        frame.onload = syncThemeToIframe;
     };
 </script>
 
