@@ -1,5 +1,5 @@
 // CONFIG: Paths
-const REPORT_PATH = 'datamatter/data/houseproject1/report.json';
+const REPORT_PATH = 'data/houseproject1/report.json';
 const EXCEL_PATH = 'data/houseproject1/ddd.xlsx';
 
 let globalData = [];
