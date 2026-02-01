@@ -2,31 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>House Project Explorer</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        #map { 
+            height: 550px; 
+            width: 100%; 
+            border-radius: 15px; 
+            border: 1px solid var(--border);
+            margin: 20px 0 40px 0;
+            z-index: 1;
+        }
+
+        .table-wrapper { 
+            overflow-x: auto; 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            border: 1px solid var(--border);
+            max-height: 800px;
+        }
+        
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th { 
+            background-color: var(--border); 
+            color: var(--accent-blue); 
+            padding: 15px; 
+            position: sticky; 
+            top: 0; 
+            z-index: 10;
+            text-align: left;
+            cursor: pointer;
+        }
+        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="index.html" style="color: var(--accent-blue); text-decoration: none;">← Back to Dashboard</a>
+    <a href="index.html" class="nav-back" style="color: var(--accent-blue); text-decoration: none;">← Back to Dashboard</a>
     <h1 class="title">House Project Explorer</h1>
     
-    <div id="status-container"></div>
-    <div id="insights-section" class="insights-grid">
-        <p>Loading Strategic Insights...</p>
-    </div>
+    <section class="summary-container">
+        <div id="status-container"></div>
+        <div id="insights-section" class="insights-grid">
+            <p>Loading Strategic Insights...</p>
+        </div>
+    </section>
 
     <div id="map"></div>
 
-    <h3 class="title">Detailed Project Data</h3>
+    <div class="table-controls">
+        <h3 class="title">Detailed Project Data</h3>
+        <span style="font-size: 12px; opacity: 0.7;">Click headers to sort table</span>
+    </div>
+
     <div id="table-container" class="table-wrapper">
-        <p style="padding: 30px; text-align: center;">Fetching data...</p>
+        <p style="padding: 30px; text-align: center;">Fetching latest project data...</p>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="navigation.js"></script>
+
 </body>
 </html>
