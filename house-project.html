@@ -3,106 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>House Project | Interactive Map</title>
+    <title>House Project | Interactive Dark Dashboard</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
     <style>
-        /* Dark Theme Variables */
+        /* CSS Variables for Easy Theme Management */
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --accent-color: #007bff;
-            --border-color: #333;
+            --bg-dark: #0f111a;
+            --card-dark: #1a1d29;
+            --accent-blue: #00a2ff;
+            --text-main: #e1e1e6;
+            --text-dim: #a0a0b8;
+            --border: #2d3142;
+            --redfin-red: #c82333;
         }
 
         body { 
-            font-family: 'Inter', system-ui, sans-serif; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding: 20px; 
-            background: var(--bg-color); 
-            color: var(--text-color); 
+            background: var(--bg-dark); 
+            color: var(--text-main); 
+            line-height: 1.6;
         }
 
-        .container { max-width: 1400px; margin: auto; }
-        
-        h1, h3 { color: #fff; letter-spacing: -0.5px; }
+        .container { max-width: 1500px; margin: auto; }
 
-        /* Map Styling */
+        h1 { font-weight: 300; color: #fff; margin-bottom: 5px; }
+        .nav-back { color: var(--accent-blue); text-decoration: none; font-size: 14px; transition: 0.2s; }
+        .nav-back:hover { text-decoration: underline; }
+
+        /* Map Section */
         #map { 
-            height: 600px; 
+            height: 550px; 
             width: 100%; 
-            border-radius: 12px; 
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-            margin-bottom: 40px; 
+            border-radius: 15px; 
+            border: 1px solid var(--border);
+            margin: 20px 0 40px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1;
         }
 
-        /* Tooltip Styling (Hover) */
+        /* Property Hover Card (Tooltip) */
         .property-tooltip {
-            background: var(--card-bg);
-            color: white;
-            border: 1px solid var(--accent-color);
+            background: var(--card-dark) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--accent-blue) !important;
             border-radius: 8px;
             padding: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
+        .leaflet-tooltip-pane .property-tooltip::before { border-right-color: var(--accent-blue); }
         .tooltip-img {
-            width: 150px;
-            border-radius: 4px;
-            display: block;
+            width: 180px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 5px;
             margin-bottom: 8px;
+            display: block;
         }
 
-        /* Table Styling */
+        /* Table Section */
+        .table-controls { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
         .table-wrapper { 
             overflow-x: auto; 
-            background: var(--card-bg); 
+            background: var(--card-dark); 
             border-radius: 12px; 
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
+            max-height: 800px;
+            overflow-y: auto;
         }
         
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         
         th { 
-            background-color: #252525; 
-            color: var(--accent-color); 
+            background-color: #24283b; 
+            color: var(--accent-blue); 
             text-align: left; 
-            padding: 16px; 
+            padding: 15px; 
             position: sticky; 
             top: 0; 
-            border-bottom: 2px solid var(--border-color);
+            z-index: 10;
+            border-bottom: 2px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
+        th:hover { background-color: #2d324d; }
+        th::after { content: ' ↕'; opacity: 0.3; font-size: 10px; margin-left: 5px; }
+        th.asc::after { content: ' ↑'; opacity: 1; }
+        th.desc::after { content: ' ↓'; opacity: 1; }
 
-        td { padding: 14px; border-bottom: 1px solid var(--border-color); }
-        tr:hover { background-color: #2a2a2a; }
+        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-dim); }
+        tr:hover td { background-color: #232738; color: #fff; }
 
-        /* Redfin Link Button */
+        /* Functional Elements */
         .redfin-link {
             display: inline-block;
-            padding: 6px 12px;
-            background: #c82333;
-            color: white;
+            padding: 5px 10px;
+            background: var(--redfin-red);
+            color: #fff;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
+            transition: background 0.2s;
         }
         .redfin-link:hover { background: #ff0000; }
 
-        .nav-back { color: var(--accent-color); text-decoration: none; margin-bottom: 20px; display: block; }
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
     </style>
 </head>
 <body>
 
 <div class="container">
     <a href="index.html" class="nav-back">← Back to Dashboard</a>
-    <h1>House Project Interactive Display</h1>
+    <h1>House Project Explorer</h1>
+    <p style="color: var(--text-dim); margin-top: 0;">Interactive Map & Real Estate Data</p>
     
     <div id="map"></div>
 
-    <h3>Detailed Project Data</h3>
+    <div class="table-controls">
+        <h3>Detailed Project Data</h3>
+        <span style="font-size: 12px; color: var(--text-dim);">Click headers to sort table</span>
+    </div>
+
     <div id="table-container" class="table-wrapper">
-        <p style="padding: 20px;">Loading properties...</p>
+        <p style="padding: 30px; text-align: center;">Fetching latest project data...</p>
     </div>
 </div>
 
@@ -110,79 +144,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
+    let globalData = [];
+    let sortConfig = { key: null, direction: 'asc' };
+
+    // 1. Initialize Map with Dark Tiles
     const map = L.map('map').setView([0, 0], 2); 
-    
-    // Using a Dark Mode Map Provider
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(map);
-
-    async function loadHouseData() {
-        try {
-            const response = await fetch('data/houseproject1/ddd.xlsx');
-            const arrayBuffer = await response.arrayBuffer();
-            const data = new Uint8Array(arrayBuffer);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-            renderContent(jsonData);
-        } catch (error) {
-            document.getElementById('table-container').innerHTML = `<p style="color:red; padding:20px;">Error: ${error.message}</p>`;
-        }
-    }
-
-    function renderContent(data) {
-        const tableContainer = document.getElementById('table-container');
-        const bounds = [];
-        
-        let tableHTML = '<table><thead><tr>';
-        const headers = Object.keys(data[0]);
-        headers.forEach(h => tableHTML += `<th>${h}</th>`);
-        tableHTML += '</tr></thead><tbody>';
-
-        data.forEach(row => {
-            tableHTML += '<tr>';
-            headers.forEach(h => {
-                let cellData = row[h] || '-';
-                
-                // Logic for Redfin Link
-                if (h.toLowerCase().includes('redfin') && cellData.startsWith('http')) {
-                    cellData = `<a href="${cellData}" target="_blank" class="redfin-link">View on Redfin</a>`;
-                }
-                tableHTML += `<td>${cellData}</td>`;
-            });
-            tableHTML += '</tr>';
-
-            // Map Markers with Tooltips
-            const lat = row.Latitude || row.lat;
-            const lng = row.Longitude || row.lng;
-
-            if (lat && lng) {
-                const marker = L.marker([lat, lng]).addTo(map);
-                
-                // Construct the Hover Card
-                const popupContent = `
-                    <div class="property-tooltip">
-                        ${row.Image ? `<img src="${row.Image}" class="tooltip-img">` : ''}
-                        <div style="font-weight:bold; font-size:16px; color:#fff;">${row.Price || 'N/A'}</div>
-                        <div style="font-size:12px; margin:4px 0;">
-                            📏 Size: ${row.Size || '-'} | Lot: ${row.LotSize || '-'}
-                        </div>
-                        <div style="color:${row.Status === 'Active' ? '#28a745' : '#ffc107'}">${row.Status || ''}</div>
-                    </div>
-                `;
-                
-                marker.bindTooltip(popupContent, { sticky: true, className: 'property-tooltip-container' });
-                bounds.push([lat, lng]);
-            }
-        });
-
-        tableHTML += '</tbody></table>';
-        tableContainer.innerHTML = tableHTML;
-        if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
-    }
-
-    loadHouseData();
-</script>
-</body>
-</html>
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.
