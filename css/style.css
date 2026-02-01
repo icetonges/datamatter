@@ -31,6 +31,7 @@ h1, h2, h3, .title { color: var(--text-heading); }
 
 /* SUMMARY SECTION STYLES */
 .summary-container { margin: 20px 0 40px 0; }
+
 .market-status-pill {
     display: inline-block;
     padding: 4px 12px;
@@ -41,11 +42,13 @@ h1, h2, h3, .title { color: var(--text-heading); }
     font-weight: bold;
     margin-bottom: 15px;
 }
+
 .insights-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
 }
+
 .insight-card {
     background-color: var(--card-bg);
     border: 1px solid var(--border);
@@ -53,9 +56,13 @@ h1, h2, h3, .title { color: var(--text-heading); }
     border-radius: 12px;
     transition: transform 0.2s ease;
 }
+
 .insight-card:hover { transform: translateY(-5px); border-color: var(--accent-blue); }
+
 .insight-card h4 { margin: 10px 0; color: var(--text-heading); }
+
 .insight-card p { font-size: 0.9rem; line-height: 1.5; color: var(--text-main); opacity: 0.8; }
+
 .pro-tip {
     margin-top: 15px;
     font-size: 0.85rem;
