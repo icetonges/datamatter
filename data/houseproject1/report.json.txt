@@ -1,0 +1,32 @@
+{
+  "lastUpdated": "2026-01-31",
+  "marketStatus": "Normalization Phase",
+  "strategicInsights": [
+    {
+      "id": "tier-a",
+      "title": "Tier A: The $400k & Below 'Homesteaders'",
+      "category": "Market Tiers",
+      "content": "Focus on West Virginia (Berkeley/Morgan Counties) and Southern PA. Houses often require 'sweat equity'—1970s split-levels or farmhouses needing HVAC or roof overhauls. Best for 'Land Plays' with build-ready lots.",
+      "action": "Look for 'Unrestricted' land in WV for farming/livestock."
+    },
+    {
+      "id": "tier-b",
+      "title": "Tier B: The $400k–$500k 'Move-In Ready'",
+      "category": "Market Tiers",
+      "content": "The 'Sweet Spot' for hybrid workers within a 90-minute commute. High competition. Habitable homes in Spotsylvania, VA or Martinsburg, WV.",
+      "action": "Critical: Check Fiber Optic availability to protect resale value."
+    },
+    {
+      "id": "future-outlook",
+      "title": "Future Outlook (2026–2027)",
+      "category": "Forecast",
+      "content": "Expect a 30-35% inventory spike through 2026 as sellers accept 6% rates. Modest price appreciation of 2-4% provides more breathing room for inspections.",
+      "action": "The 'Amazon Effect' from HQ2 will protect long-term value."
+    }
+  ],
+  "focusRegions": [
+    {"region": "Eastern Panhandle, WV", "prospect": "Martinsburg", "why": "Lowest taxes, MARC train access."},
+    {"region": "Shenandoah Valley, VA", "prospect": "Front Royal", "why": "National Park access, high appreciation."},
+    {"region": "I-95 Corridor", "prospect": "Spotsylvania", "why": "Flat land, VRE train to DC."}
+  ]
+}

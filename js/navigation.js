@@ -1,35 +1,133 @@
-// Function to switch sub-pages
-function loadPage(btn, url) {
-    const iframe = document.getElementById('main-frame');
-    iframe.src = url;
+// CONFIG: Paths
+const REPORT_PATH = 'datamatter/data/houseproject1/report.json';
+const EXCEL_PATH = 'data/houseproject1/ddd.xlsx';
+
+let globalData = [];
+let sortConfig = { key: null, direction: 'asc' };
+
+// Initialize everything on load
+window.onload = () => {
+    const savedTheme = localStorage.getItem('selected-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
     
-    // UI Update for buttons
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    loadStrategicReport();
+    initExcelData();
+    syncIframeTheme();
+};
 
-    // Sync theme to the new page once it finishes loading
-    iframe.onload = function() {
-        syncIframeTheme();
-    };
-}
+// 1. Fetch JSON Strategic Report
+async function loadStrategicReport() {
+    try {
+        const response = await fetch(REPORT_PATH);
+        if (!response.ok) throw new Error('Report file not found');
+        const data = await response.json();
+        
+        const container = document.getElementById('insights-section');
+        const statusContainer = document.getElementById('status-container');
 
-// Function to toggle the theme
-function toggleTheme() {
-    const root = document.documentElement;
-    const newTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    
-    // 1. Update the sidebar/portal
-    root.setAttribute('data-theme', newTheme);
-    localStorage.setItem('selected-theme', newTheme);
+        if (statusContainer) {
+            statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
+        }
 
-    // 2. REACH INTO THE IFRAME (The "Developer Dashboard" part)
-    const frame = document.getElementById('content-frame'); // or your iframe ID
-    if (frame && frame.contentDocument) {
-        frame.contentDocument.documentElement.setAttribute('data-theme', newTheme);
+        if (container) {
+            container.innerHTML = data.strategicInsights.map(item => `
+                <div class="insight-card">
+                    <small style="color: var(--accent-blue); text-transform: uppercase; font-weight:bold;">${item.category}</small>
+                    <h4>${item.title}</h4>
+                    <p>${item.content}</p>
+                    <div class="pro-tip">💡 <b>Strategy:</b> ${item.action}</div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error("Report Load Error:", error);
     }
 }
 
-// Helper to push the theme inside the Iframe
+// 2. Fetch Excel Property Data
+async function initExcelData() {
+    try {
+        const response = await fetch(EXCEL_PATH);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+        globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        renderAll();
+    } catch (error) {
+        document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error: ${error.message}</p>`;
+    }
+}
+
+// --- RENDERING LOGIC ---
+const formatCurrency = (value) => {
+    if (!value) return '-';
+    const num = parseFloat(String(value).replace(/[$,]/g, ''));
+    return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
+
+const map = L.map('map').setView([0, 0], 2);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(map);
+
+function renderAll() {
+    renderMap(globalData);
+    renderTable(globalData);
+}
+
+function renderMap(data) {
+    map.eachLayer((layer) => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+    const bounds = [];
+    data.forEach(row => {
+        const lat = parseFloat(row.Latitude || row.lat);
+        const lng = parseFloat(row.Longitude || row.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            const marker = L.marker([lat, lng]).addTo(map);
+            marker.bindTooltip(`
+                <div class="property-tooltip">
+                    ${row.Image ? `<img src="${row.Image}" class="tooltip-img">` : ''}
+                    <div style="font-size: 16px; font-weight: bold; color: #fff;">${formatCurrency(row.Price)}</div>
+                    <div style="font-size: 12px; margin: 5px 0; color: #aaa;">📏 ${row.Size || '-'} sqft</div>
+                </div>`, { sticky: true, direction: 'right' });
+            bounds.push([lat, lng]);
+        }
+    });
+    if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+}
+
+function renderTable(data) {
+    const container = document.getElementById('table-container');
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    let html = '<table><thead><tr>' + headers.map(h => `<th onclick="handleSort('${h}')">${h}</th>`).join('') + '</tr></thead><tbody>';
+    data.forEach(row => {
+        html += '<tr>' + headers.map(h => {
+            let val = row[h] || '-';
+            if (h.toLowerCase() === 'price') val = formatCurrency(val);
+            if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) val = `<a href="${val}" target="_blank" class="redfin-link">Redfin</a>`;
+            return `<td>${val}</td>`;
+        }).join('') + '</tr>';
+    });
+    container.innerHTML = html + '</tbody></table>';
+}
+
+function handleSort(key) {
+    sortConfig.direction = (sortConfig.key === key && sortConfig.direction === 'asc') ? 'desc' : 'asc';
+    sortConfig.key = key;
+    globalData.sort((a, b) => {
+        let v1 = String(a[key]).replace(/[$,]/g, '');
+        let v2 = String(b[key]).replace(/[$,]/g, '');
+        if (!isNaN(v1) && !isNaN(v2)) { v1 = parseFloat(v1); v2 = parseFloat(v2); }
+        return sortConfig.direction === 'asc' ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+    });
+    renderAll();
+}
+
+// --- THEME SYNC LOGIC ---
+function toggleTheme() {
+    const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('selected-theme', newTheme);
+    syncIframeTheme();
+}
+
 function syncIframeTheme() {
     const theme = document.documentElement.getAttribute('data-theme');
     const iframe = document.getElementById('main-frame');
@@ -37,10 +135,3 @@ function syncIframeTheme() {
         iframe.contentDocument.documentElement.setAttribute('data-theme', theme);
     }
 }
-
-// Initialize theme on page load
-window.onload = () => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    syncIframeTheme();
-};
