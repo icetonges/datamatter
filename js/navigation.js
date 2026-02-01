@@ -1,4 +1,4 @@
-// CONFIG: Updated paths to match internal folder structure
+// CONFIG: Strictly relative paths. These work on both Local and GitHub Pages.
 const REPORT_PATH = 'data/houseproject1/report.json';
 const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
 
@@ -7,32 +7,37 @@ let sortConfig = { key: null, direction: 'asc' };
 let map; 
 
 window.onload = () => {
+    // 1. Theme Setup
     const savedTheme = localStorage.getItem('selected-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
+    // 2. Initialize Map
     initMap();
+    
+    // 3. Load Data
     loadStrategicReport();
     initExcelData();
 };
 
 function initMap() {
-    // Standard Leaflet initialization - Using CartoDB Dark Matter for dashboard feel
-    map = L.map('map').setView([0, 0], 2);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
-        attribution: '&copy; CARTO' 
-    }).addTo(map);
+    try {
+        map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
+            attribution: '&copy; CARTO' 
+        }).addTo(map);
+    } catch (e) {
+        console.error("Leaflet Map Error:", e);
+    }
 }
 
-// 1. Fetch JSON Strategic Report
 async function loadStrategicReport() {
+    const container = document.getElementById('insights-section');
     try {
         const response = await fetch(REPORT_PATH);
-        if (!response.ok) throw new Error('Report not found');
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${REPORT_PATH} not found`);
         const data = await response.json();
         
-        const container = document.getElementById('insights-section');
         const statusContainer = document.getElementById('status-container');
-
         if (statusContainer && data.marketStatus) {
             statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
         }
@@ -49,25 +54,30 @@ async function loadStrategicReport() {
         }
     } catch (error) {
         console.error("Report Load Error:", error);
-        document.getElementById('insights-section').innerHTML = `<p style="color: #ff6b6b;">Summary data unavailable. Check: ${REPORT_PATH}</p>`;
+        if (container) container.innerHTML = `<p style="color: #ff6b6b; padding: 20px;">⚠️ Summary data unavailable. Ensure file exists at: <b>${REPORT_PATH}</b></p>`;
     }
 }
 
-// 2. Fetch Excel Property Data
 async function initExcelData() {
+    const tableContainer = document.getElementById('table-container');
     try {
         const response = await fetch(EXCEL_PATH);
-        if (!response.ok) throw new Error('Excel file not found');
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${EXCEL_PATH} not found`);
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        globalData = XLSX.utils.sheet_to_json(firstSheet);
+        globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
         renderAll();
     } catch (error) {
         console.error("Excel Load Error:", error);
-        document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel: ${EXCEL_PATH}</p>`;
+        if (tableContainer) tableContainer.innerHTML = `<p style="color:red; text-align:center; padding: 20px;">Error loading Excel data. <br>Path checked: <b>${EXCEL_PATH}</b></p>`;
     }
 }
+
+const formatCurrency = (val) => {
+    if (!val) return '-';
+    const num = parseFloat(String(val).replace(/[$,]/g, ''));
+    return isNaN(num) ? val : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
 
 function renderAll() {
     renderMap(globalData);
@@ -83,7 +93,7 @@ function renderMap(data) {
         const lng = parseFloat(row.Longitude || row.lng);
         if (!isNaN(lat) && !isNaN(lng)) {
             const marker = L.marker([lat, lng]).addTo(map);
-            marker.bindTooltip(`<b>${row.Price || 'Contact'}</b><br>${row.ProjectName || 'Property'}`);
+            marker.bindTooltip(`<b>${formatCurrency(row.Price)}</b><br>${row.ProjectName || 'Property'}`);
             bounds.push([lat, lng]);
         }
     });
@@ -96,7 +106,11 @@ function renderTable(data) {
     const headers = Object.keys(data[0]);
     let html = '<table><thead><tr>' + headers.map(h => `<th onclick="handleSort('${h}')">${h}</th>`).join('') + '</tr></thead><tbody>';
     data.forEach(row => {
-        html += '<tr>' + headers.map(h => `<td>${row[h] || '-'}</td>`).join('') + '</tr>';
+        html += '<tr>' + headers.map(h => {
+            let val = row[h] || '-';
+            if (h.toLowerCase() === 'price') val = formatCurrency(val);
+            return `<td>${val}</td>`;
+        }).join('') + '</tr>';
     });
     container.innerHTML = html + '</tbody></table>';
 }
