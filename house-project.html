@@ -2,45 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>House Project Explorer</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- FIX: Leaflet CSS pinned to same version as the JS below (@1.9.4) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
+
     <style>
-        #map { height: 550px; width: 100%; border-radius: 15px; border: 1px solid var(--border); margin: 20px 0 40px 0; z-index: 1; }
-        .table-wrapper { overflow-x: auto; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); max-height: 800px; }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { background-color: var(--border); color: var(--accent-blue); padding: 15px; position: sticky; top: 0; text-align: left; cursor: pointer; }
-        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        /* ── Map ── */
+        #map {
+            height: 550px;
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin: 24px 0 36px 0;
+            position: relative;   /* FIX: required for z-index to take effect */
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
 
+<!-- Theme toggle (fixed, top-right) -->
+<button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
+
 <div class="container">
-    <a href="index.html" class="nav-back" style="text-decoration: none; color: var(--accent-blue); font-weight: bold;">← Back to Dashboard</a>
+
+    <!-- Back nav -->
+    <a href="index.html" class="nav-back">← Back to Dashboard</a>
+
+    <!-- Page title -->
     <h1 class="title">House Project Explorer</h1>
-    
+
+    <!-- ── Strategic Insights (pulled from report.json) ─── -->
     <section class="summary-container">
         <div id="status-container"></div>
         <div id="insights-section" class="insights-grid">
-            <p>Loading Strategic Insights...</p>
+            <!-- JS replaces this with insight cards or an error card -->
+            <div class="loading-state">
+                <div class="spinner"></div>
+                Loading Strategic Insights…
+            </div>
         </div>
     </section>
 
+    <!-- ── Leaflet Map ─────────────────────────────────── -->
     <div id="map"></div>
 
+    <!-- ── Property Table (pulled from Excel) ─────────── -->
     <div class="table-controls">
-        <h3 class="title">Detailed Project Data</h3>
+        <h3 class="title">Property Inventory</h3>
+        <span class="row-count" id="rowCount"></span>
     </div>
 
     <div id="table-container" class="table-wrapper">
-        <p style="padding: 30px; text-align: center;">Fetching latest project data...</p>
+        <!-- JS replaces this with the rendered table or an error state -->
+        <div class="loading-state">
+            <div class="spinner"></div>
+            Fetching property data…
+        </div>
     </div>
+
 </div>
 
+<!-- Leaflet JS — version pinned to match CSS above -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- SheetJS (xlsx) — parses the Excel file client-side -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+<!-- App logic -->
 <script src="navigation.js"></script>
+
 </body>
 </html>
