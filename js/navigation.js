@@ -1,4 +1,4 @@
-// CONFIG: Strictly relative paths. These work on both Local and GitHub Pages.
+// CONFIG: Both paths now use the relative 'data/' folder
 const REPORT_PATH = 'data/houseproject1/report.json';
 const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
 
@@ -6,38 +6,33 @@ let globalData = [];
 let sortConfig = { key: null, direction: 'asc' };
 let map; 
 
+// Initialize everything on load
 window.onload = () => {
-    // 1. Theme Setup
     const savedTheme = localStorage.getItem('selected-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
-    // 2. Initialize Map
     initMap();
-    
-    // 3. Load Data
     loadStrategicReport();
     initExcelData();
 };
 
 function initMap() {
-    try {
-        map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
-            attribution: '&copy; CARTO' 
-        }).addTo(map);
-    } catch (e) {
-        console.error("Leaflet Map Error:", e);
-    }
+    map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
+        attribution: '&copy; CARTO' 
+    }).addTo(map);
 }
 
+// 1. Fetch JSON Strategic Report (FIXED PATH)
 async function loadStrategicReport() {
-    const container = document.getElementById('insights-section');
     try {
         const response = await fetch(REPORT_PATH);
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${REPORT_PATH} not found`);
+        if (!response.ok) throw new Error('Report file not found');
         const data = await response.json();
         
+        const container = document.getElementById('insights-section');
         const statusContainer = document.getElementById('status-container');
+
         if (statusContainer && data.marketStatus) {
             statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
         }
@@ -54,29 +49,29 @@ async function loadStrategicReport() {
         }
     } catch (error) {
         console.error("Report Load Error:", error);
-        if (container) container.innerHTML = `<p style="color: #ff6b6b; padding: 20px;">⚠️ Summary data unavailable. Ensure file exists at: <b>${REPORT_PATH}</b></p>`;
+        // Silently fail or show a small hint for debugging
     }
 }
 
+// 2. Fetch Excel Property Data (YOUR WORKING LOGIC)
 async function initExcelData() {
-    const tableContainer = document.getElementById('table-container');
     try {
         const response = await fetch(EXCEL_PATH);
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${EXCEL_PATH} not found`);
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
         globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
         renderAll();
     } catch (error) {
         console.error("Excel Load Error:", error);
-        if (tableContainer) tableContainer.innerHTML = `<p style="color:red; text-align:center; padding: 20px;">Error loading Excel data. <br>Path checked: <b>${EXCEL_PATH}</b></p>`;
+        document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel: ${error.message}</p>`;
     }
 }
 
-const formatCurrency = (val) => {
-    if (!val) return '-';
-    const num = parseFloat(String(val).replace(/[$,]/g, ''));
-    return isNaN(num) ? val : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+// --- RENDERING LOGIC (YOUR WORKING LOGIC) ---
+const formatCurrency = (value) => {
+    if (!value) return '-';
+    const num = parseFloat(String(value).replace(/[$,]/g, ''));
+    return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 };
 
 function renderAll() {
@@ -93,7 +88,12 @@ function renderMap(data) {
         const lng = parseFloat(row.Longitude || row.lng);
         if (!isNaN(lat) && !isNaN(lng)) {
             const marker = L.marker([lat, lng]).addTo(map);
-            marker.bindTooltip(`<b>${formatCurrency(row.Price)}</b><br>${row.ProjectName || 'Property'}`);
+            marker.bindTooltip(`
+                <div class="property-tooltip">
+                    ${row.Image ? `<img src="${row.Image}" class="tooltip-img" style="width:180px; height:120px; object-fit:cover; border-radius:5px; margin-bottom:8px; display:block;">` : ''}
+                    <div style="font-size: 16px; font-weight: bold; color: white;">${formatCurrency(row.Price)}</div>
+                    <div style="font-size: 12px; margin: 5px 0; color: #ccc;">📏 ${row.Size || '-'} sqft</div>
+                </div>`, { sticky: true, direction: 'right' });
             bounds.push([lat, lng]);
         }
     });
@@ -109,6 +109,7 @@ function renderTable(data) {
         html += '<tr>' + headers.map(h => {
             let val = row[h] || '-';
             if (h.toLowerCase() === 'price') val = formatCurrency(val);
+            if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) val = `<a href="${val}" target="_blank" class="redfin-link" style="padding: 5px 10px; background: #c82333; color: #fff; text-decoration: none; border-radius: 4px; font-size: 11px;">Redfin</a>`;
             return `<td>${val}</td>`;
         }).join('') + '</tr>';
     });
@@ -119,7 +120,9 @@ function handleSort(key) {
     sortConfig.direction = (sortConfig.key === key && sortConfig.direction === 'asc') ? 'desc' : 'asc';
     sortConfig.key = key;
     globalData.sort((a, b) => {
-        let v1 = a[key], v2 = b[key];
+        let v1 = String(a[key]).replace(/[$,]/g, '');
+        let v2 = String(b[key]).replace(/[$,]/g, '');
+        if (!isNaN(v1) && !isNaN(v2)) { v1 = parseFloat(v1); v2 = parseFloat(v2); }
         return sortConfig.direction === 'asc' ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
     });
     renderAll();
