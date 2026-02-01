@@ -3,65 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>House Project Explorer</title>
+    <title>House Project | Interactive Dark Dashboard</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css">
     
     <style>
+        :root {
+            --bg-dark: #0f111a;
+            --card-dark: #1a1d29;
+            --accent-blue: #00a2ff;
+            --accent-green: #10b981;
+            --text-main: #e1e1e6;
+            --text-dim: #a0a0b8;
+            --border: #2d3142;
+            --redfin-red: #c82333;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: var(--bg-dark); 
+            color: var(--text-main); 
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1500px; margin: auto; }
+        h1 { font-weight: 300; color: #fff; margin-bottom: 5px; }
+        .nav-back { color: var(--accent-blue); text-decoration: none; font-size: 14px; transition: 0.2s; }
+        .nav-back:hover { text-decoration: underline; }
+
+        /* Strategic Summary Styles */
+        .summary-container {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            border: 1px solid var(--border);
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .market-status {
+            background: var(--accent-green);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .insight-card {
+            background: var(--card-dark);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease;
+        }
+
+        .insight-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-blue);
+        }
+
+        .insight-card h4 { margin: 10px 0; color: #fff; font-size: 18px; }
+        .insight-card p { font-size: 14px; color: var(--text-dim); margin-bottom: 15px; }
+
+        .pro-tip {
+            font-size: 12px;
+            font-style: italic;
+            color: var(--accent-blue);
+            background: rgba(0, 162, 255, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+        }
+
         #map { 
             height: 550px; 
             width: 100%; 
             border-radius: 15px; 
             border: 1px solid var(--border);
             margin: 20px 0 40px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             z-index: 1;
         }
+
+        .property-tooltip {
+            background: var(--card-dark) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--accent-blue) !important;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .tooltip-img {
+            width: 180px; height: 120px; object-fit: cover;
+            border-radius: 5px; margin-bottom: 8px; display: block;
+        }
+
+        .table-controls { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
         .table-wrapper { 
             overflow-x: auto; 
-            background: var(--card-bg); 
+            background: var(--card-dark); 
             border-radius: 12px; 
             border: 1px solid var(--border);
             max-height: 800px;
         }
+        
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         th { 
-            background-color: var(--border); 
-            color: var(--accent-blue); 
-            padding: 15px; 
-            position: sticky; 
-            top: 0; 
-            z-index: 10; 
-            text-align: left; 
-            cursor: pointer; 
+            background-color: #24283b; color: var(--accent-blue); 
+            text-align: left; padding: 15px; position: sticky; top: 0; z-index: 10;
+            border-bottom: 2px solid var(--border); cursor: pointer;
+            font-size: 13px; text-transform: uppercase;
         }
-        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
-        .property-tooltip {
-            background: #1a1d29 !important;
-            color: white !important;
-            border: 1px solid #00a2ff !important;
-            padding: 10px;
-            border-radius: 8px;
+        th:hover { background-color: #2d324d; }
+        th::after { content: ' ↕'; opacity: 0.3; font-size: 10px; margin-left: 5px; }
+        th.asc::after { content: ' ↑'; opacity: 1; }
+        th.desc::after { content: ' ↓'; opacity: 1; }
+
+        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-dim); }
+        tr:hover td { background-color: #232738; color: #fff; }
+
+        .redfin-link {
+            display: inline-block; padding: 5px 10px; background: var(--redfin-red);
+            color: #fff; text-decoration: none; border-radius: 4px;
+            font-size: 11px; font-weight: bold;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="index.html" class="nav-back" style="text-decoration:none; color:var(--accent-blue); font-weight:bold;">← Back to Dashboard</a>
-    <h1 class="title">House Project Explorer</h1>
+    <a href="index.html" class="nav-back">← Back to Dashboard</a>
+    <h1>House Project Explorer</h1>
     
     <section class="summary-container">
-        <div id="status-container"></div>
+        <div class="summary-header">
+            <h3>Strategic Findings Summary</h3>
+            <span id="market-status-badge" class="market-status">Loading...</span>
+        </div>
         <div id="insights-section" class="insights-grid">
-            <p>Loading Strategic Insights...</p>
+            <p style="padding: 20px;">Fetching strategic insights...</p>
         </div>
     </section>
 
     <div id="map"></div>
 
     <div class="table-controls">
-        <h3 class="title">Detailed Project Data</h3>
+        <h3>Detailed Project Data</h3>
+        <span style="font-size: 12px; color: var(--text-dim);">Click headers to sort table</span>
     </div>
 
     <div id="table-container" class="table-wrapper">
@@ -73,79 +176,67 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-    // CONFIG: Using relative paths as they worked for Excel
-    const REPORT_PATH = 'data/houseproject1/report.json';
-    const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
-
     let globalData = [];
     let sortConfig = { key: null, direction: 'asc' };
-    let map; 
+    const REPORT_PATH = 'datamatter/data/houseproject1/report.json';
+    const EXCEL_PATH = 'data/houseproject1/ddd.xlsx';
 
-    window.onload = () => {
-        const savedTheme = localStorage.getItem('selected-theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        
-        initMap();
-        loadStrategicReport(); // JSON fix included here
-        initExcelData();       // Your working Excel logic
-    };
-
-    function initMap() {
-        map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
-            attribution: '&copy; CARTO' 
-        }).addTo(map);
-    }
-
-    // 1. Fetch JSON Strategic Report (Fixed Path)
+    // 1. Load Strategic Findings
     async function loadStrategicReport() {
         try {
             const response = await fetch(REPORT_PATH);
-            if (!response.ok) throw new Error('Report file not found');
+            if (!response.ok) throw new Error('Report JSON not found');
             const data = await response.json();
             
+            document.getElementById('market-status-badge').innerText = data.marketStatus || 'Active';
             const container = document.getElementById('insights-section');
-            const statusContainer = document.getElementById('status-container');
-
-            if (statusContainer && data.marketStatus) {
-                statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
-            }
 
             if (container && data.strategicInsights) {
                 container.innerHTML = data.strategicInsights.map(item => `
                     <div class="insight-card">
-                        <small style="color: var(--accent-blue); text-transform: uppercase; font-weight:bold;">${item.category}</small>
+                        <small style="color: var(--accent-blue); text-transform: uppercase; font-weight: bold;">${item.category}</small>
                         <h4>${item.title}</h4>
                         <p>${item.content}</p>
-                        <div class="pro-tip">💡 <b>Strategy:</b> ${item.action}</div>
+                        <div class="pro-tip">💡 <b>Pro-tip:</b> ${item.action}</div>
                     </div>
                 `).join('');
             }
         } catch (error) {
-            console.warn("JSON Report skip:", error.message);
-            // Non-critical: we don't break the page if report is missing
+            console.error("Error loading report:", error);
+            document.getElementById('insights-section').innerHTML = `<p style="color: #ff6b6b;">Summary data unavailable.</p>`;
         }
     }
 
-    // 2. Fetch Excel Property Data (Original Working Logic)
-    async function initExcelData() {
-        try {
-            const response = await fetch(EXCEL_PATH);
-            const arrayBuffer = await response.arrayBuffer();
-            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-            globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            renderAll();
-        } catch (error) {
-            console.error("Excel Load Error:", error);
-            document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel: ${error.message}</p>`;
-        }
-    }
-
+    // 2. Map & Table Logic
     const formatCurrency = (value) => {
         if (!value) return '-';
         const num = parseFloat(String(value).replace(/[$,]/g, ''));
-        return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+        return isNaN(num) ? value : new Intl.NumberFormat('en-US', {
+            style: 'currency', currency: 'USD'
+        }).format(num);
     };
+
+    const map = L.map('map').setView([0, 0], 2); 
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CARTO'
+    }).addTo(map);
+
+    async function init() {
+        loadStrategicReport();
+        try {
+            const response = await fetch(EXCEL_PATH);
+            if (!response.ok) throw new Error("Excel file not found.");
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+            globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+            renderAll();
+        } catch (error) {
+            document.getElementById('table-container').innerHTML = 
+                `<p style="color:#ff6b6b; padding:30px; text-align:center;">Error: ${error.message}</p>`;
+        }
+    }
 
     function renderAll() {
         renderMap(globalData);
@@ -153,19 +244,22 @@
     }
 
     function renderMap(data) {
-        if (!map) return;
         map.eachLayer((layer) => { if (layer instanceof L.Marker) map.removeLayer(layer); });
         const bounds = [];
         data.forEach(row => {
             const lat = parseFloat(row.Latitude || row.lat);
             const lng = parseFloat(row.Longitude || row.lng);
+
             if (!isNaN(lat) && !isNaN(lng)) {
                 const marker = L.marker([lat, lng]).addTo(map);
                 marker.bindTooltip(`
                     <div class="property-tooltip">
-                        <div style="font-size: 16px; font-weight: bold;">${formatCurrency(row.Price)}</div>
-                        <div style="font-size: 12px; margin: 5px 0; color: #ccc;">📏 ${row.Size || '-'} sqft</div>
-                    </div>`, { sticky: true, direction: 'right' });
+                        ${row.Image ? `<img src="${row.Image}" class="tooltip-img">` : ''}
+                        <div style="font-size: 16px; font-weight: bold; color: #fff;">${formatCurrency(row.Price)}</div>
+                        <div style="font-size: 12px; margin: 5px 0; color: #aaa;">📏 ${row.Size || '-'} sqft</div>
+                        <div style="font-size: 11px; color: var(--accent-blue);">${row.ProjectName || 'Project'}</div>
+                    </div>
+                `, { sticky: true, direction: 'right' });
                 bounds.push([lat, lng]);
             }
         });
@@ -174,16 +268,44 @@
 
     function renderTable(data) {
         const container = document.getElementById('table-container');
-        if (!data || data.length === 0) return;
+        if (data.length === 0) return;
+
         const headers = Object.keys(data[0]);
-        let html = '<table><thead><tr>' + headers.map(h => `<th onclick="handleSort('${h}')">${h}</th>`).join('') + '</tr></thead><tbody>';
+        let html = '<table><thead><tr>' + headers.map(h => {
+            let sortClass = sortConfig.key === h ? sortConfig.direction : '';
+            return `<th class="${sortClass}" onclick="handleSort('${h}')">${h}</th>`;
+        }).join('') + '</tr></thead><tbody>';
+
         data.forEach(row => {
             html += '<tr>' + headers.map(h => {
                 let val = row[h] || '-';
                 if (h.toLowerCase() === 'price') val = formatCurrency(val);
                 if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) {
-                    val = `<a href="${val}" target="_blank" style="padding: 5px 10px; background: #c82333; color: #fff; text-decoration: none; border-radius: 4px; font-size: 11px;">Redfin</a>`;
+                    val = `<a href="${val}" target="_blank" class="redfin-link">Redfin</a>`;
                 }
                 return `<td>${val}</td>`;
             }).join('') + '</tr>';
         });
+
+        container.innerHTML = html + '</tbody></table>';
+    }
+
+    function handleSort(key) {
+        sortConfig.direction = (sortConfig.key === key && sortConfig.direction === 'asc') ? 'desc' : 'asc';
+        sortConfig.key = key;
+
+        globalData.sort((a, b) => {
+            let v1 = String(a[key]).replace(/[$,]/g, '');
+            let v2 = String(b[key]).replace(/[$,]/g, '');
+            if (!isNaN(parseFloat(v1)) && !isNaN(parseFloat(v2))) {
+                v1 = parseFloat(v1); v2 = parseFloat(v2);
+            }
+            return sortConfig.direction === 'asc' ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+        });
+        renderAll();
+    }
+
+    init();
+</script>
+</body>
+</html>
