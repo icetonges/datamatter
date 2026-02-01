@@ -1,65 +1,32 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>House Project Explorer</title>
-
-    <!-- Leaflet CSS — version MUST match the JS below (both @1.9.4) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-    <!-- App styles -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- Theme toggle — syncs with parent shell if inside an iframe -->
-<button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
-
 <div class="container">
-
-    <!-- Back link -->
     <a href="index.html" class="nav-back">← Back to Dashboard</a>
-
-    <!-- Page heading -->
     <h1 class="title">House Project Explorer</h1>
-
-    <!-- ── 1. Strategic Insights (from report.json) ─────────── -->
+    
     <section class="summary-container">
+        <div id="status-container"></div>
         <div id="insights-section" class="insights-grid">
-            <div class="loading-state">
-                <div class="spinner"></div>
-                Loading Strategic Insights…
-            </div>
+            <p>Loading Strategic Insights...</p>
         </div>
     </section>
 
-    <!-- ── 2. Map (Leaflet — markers from Excel data) ──────── -->
-    <div id="map"></div>
-
-    <!-- ── 3. Property Inventory Table (from Excel) ────────── -->
-    <div class="table-controls">
-        <h3 class="title">Property Inventory</h3>
-        <span class="row-count" id="rowCount"></span>
-    </div>
+    <div id="map" style="height: 550px; width: 100%; border-radius: 15px; margin-bottom: 40px; border: 1px solid var(--border);"></div>
 
     <div id="table-container" class="table-wrapper">
-        <div class="loading-state">
-            <div class="spinner"></div>
-            Fetching property data…
-        </div>
+        <p style="padding: 30px; text-align: center;">Fetching latest project data...</p>
     </div>
-
 </div>
 
-<!-- Leaflet JS — pinned to 1.9.4, same as CSS above -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- SheetJS — parses .xlsx in the browser -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<!-- App logic (runs after DOM is ready via DOMContentLoaded internally) -->
 <script src="navigation.js"></script>
-
 </body>
 </html>

@@ -1,336 +1,140 @@
-// ============================================================
-// navigation.js — House Project Explorer
-// Works standalone OR inside an <iframe> within a parent shell.
-// ============================================================
-
+// CONFIG: Paths relative to the repository root
 const REPORT_PATH = 'data/houseproject1/report.json';
-const EXCEL_PATH  = 'data/houseproject1/ddd.xlsx';
+const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
 
-let globalData  = [];
-let map         = null;
-let markerGroup = null;
-let darkLayer   = null;
-let lightLayer  = null;
+let globalData = [];
+let sortConfig = { key: null, direction: 'asc' };
+let map; 
 
-// ─── Entry ──────────────────────────────────────────────────
-// Use DOMContentLoaded instead of window.onload.
-// window.onload waits for ALL sub-resources (images, iframes, external scripts).
-// Inside an iframe that itself loads Leaflet + XLSX from CDNs, onload can fire
-// before those CDN scripts have finished executing, so L or XLSX may be undefined.
-// DOMContentLoaded fires once the DOM is parsed; we then explicitly wait for the
-// external libs with a small poll before proceeding.
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('[HouseProjExplorer] DOM ready. Initialising…');
+// Initialize everything on load
+window.onload = () => {
+    // 1. Set Theme
+    const savedTheme = localStorage.getItem('selected-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // 2. Load Components (Each is wrapped in try/catch to prevent page crashes)
+    try { initMap(); } catch(e) { console.error("Map failed:", e); }
+    try { loadStrategicReport(); } catch(e) { console.error("Report failed:", e); }
+    try { initExcelData(); } catch(e) { console.error("Excel failed:", e); }
+};
 
-    // 1. Apply theme (reads parent if in iframe, else uses own localStorage)
-    applyTheme();
-
-    // 2. Wait for Leaflet + XLSX to actually be available (CDN scripts can be slow)
-    await waitForLibs();
-
-    // 3. Init map
-    initMap();
-
-    // 4. Load data — fire both concurrently, each handles its own errors
-    await Promise.all([
-        loadStrategicReport(),
-        loadExcelData()
-    ]);
-
-    console.log('[HouseProjExplorer] Init complete.');
-});
-
-// ─── Wait for CDN libs ──────────────────────────────────────
-// Polls for up to 5 seconds. This is the reliable way to handle async CDN script loading.
-function waitForLibs() {
-    return new Promise((resolve) => {
-        const start = Date.now();
-        function check() {
-            const leafletOk = typeof L !== 'undefined';
-            const xlsxOk   = typeof XLSX !== 'undefined';
-            if ((leafletOk && xlsxOk) || (Date.now() - start > 5000)) {
-                if (!leafletOk) console.warn('[HouseProjExplorer] Leaflet did not load within 5s.');
-                if (!xlsxOk)   console.warn('[HouseProjExplorer] XLSX did not load within 5s.');
-                resolve();
-            } else {
-                setTimeout(check, 100);
-            }
-        }
-        check();
-    });
-}
-
-// ─── Theme ──────────────────────────────────────────────────
-function applyTheme() {
-    let theme;
-
-    // If we're inside an iframe, try to read the parent's theme first
-    try {
-        if (window.parent && window.parent !== window) {
-            const parentTheme = window.parent.document.documentElement.getAttribute('data-theme');
-            if (parentTheme) {
-                theme = parentTheme;
-                console.log('[HouseProjExplorer] Synced theme from parent:', theme);
-            }
-        }
-    } catch (e) {
-        // Cross-origin parent — can't access, fall through to own localStorage
-    }
-
-    // Fallback: own localStorage, then default to 'light' to match parent's default
-    if (!theme) {
-        theme = localStorage.getItem('selected-theme') || 'light';
-    }
-
-    document.documentElement.setAttribute('data-theme', theme);
-    updateToggleLabel(theme);
-}
-
-function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
-    const next    = current === 'dark' ? 'light' : 'dark';
-
-    // Set on this document
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('selected-theme', next);
-    updateToggleLabel(next);
-
-    // Try to sync to parent as well
-    try {
-        if (window.parent && window.parent !== window) {
-            window.parent.document.documentElement.setAttribute('data-theme', next);
-        }
-    } catch (e) { /* cross-origin, ignore */ }
-
-    // Swap map tiles
-    swapMapTiles(next);
-}
-
-function updateToggleLabel(theme) {
-    const btn = document.getElementById('themeToggleBtn');
-    if (btn) btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
-}
-
-// ─── Map ────────────────────────────────────────────────────
 function initMap() {
-    const mapEl = document.getElementById('map');
-    if (!mapEl) { console.error('[HouseProjExplorer] #map element not found.'); return; }
-
-    if (typeof L === 'undefined') {
-        console.error('[HouseProjExplorer] Leaflet not available — map will not render.');
-        mapEl.innerHTML = '<div class="error-inline" style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"><div class="error-title">⚠ Map Failed</div><div class="error-detail">Leaflet library could not be loaded.</div></div>';
-        return;
-    }
-
     map = L.map('map').setView([0, 0], 2);
-
-    darkLayer = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 }
-    );
-    lightLayer = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 }
-    );
-
-    const theme = document.documentElement.getAttribute('data-theme') || 'light';
-    (theme === 'dark' ? darkLayer : lightLayer).addTo(map);
-
-    markerGroup = L.layerGroup().addTo(map);
-    console.log('[HouseProjExplorer] Map initialised.');
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
+        attribution: '&copy; CARTO' 
+    }).addTo(map);
 }
 
-function swapMapTiles(theme) {
-    if (!map) return;
-    try {
-        if (map.hasLayer(lightLayer)) map.removeLayer(lightLayer);
-        if (map.hasLayer(darkLayer))  map.removeLayer(darkLayer);
-    } catch (e) { /* layer wasn't added yet, safe to ignore */ }
-    (theme === 'dark' ? darkLayer : lightLayer).addTo(map);
-}
-
-// ─── Strategic Report ───────────────────────────────────────
+// 1. Fetch JSON Strategic Report (Fixed Path & Safe Loading)
 async function loadStrategicReport() {
-    const container = document.getElementById('insights-section');
-    if (!container) { console.error('[HouseProjExplorer] #insights-section not found.'); return; }
-
     try {
-        console.log('[HouseProjExplorer] Fetching report from:', REPORT_PATH);
         const response = await fetch(REPORT_PATH);
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status} — report.json not found at "${REPORT_PATH}".`);
-        }
-
+        if (!response.ok) throw new Error('Report file not found');
         const data = await response.json();
+        
+        const container = document.getElementById('insights-section');
+        const statusContainer = document.getElementById('status-container');
 
-        // Validate structure before using
-        if (!data || !Array.isArray(data.strategicInsights) || data.strategicInsights.length === 0) {
-            throw new Error('report.json exists but has no valid "strategicInsights" array.');
+        if (statusContainer && data.marketStatus) {
+            statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
         }
 
-        container.innerHTML = data.strategicInsights.map(item => `
-            <div class="insight-card">
-                <h4>${escapeHtml(item.title  || 'Untitled')}</h4>
-                <p>${escapeHtml(item.content || 'No details available.')}</p>
-            </div>
-        `).join('');
-
-        console.log('[HouseProjExplorer] Report loaded — ' + data.strategicInsights.length + ' insights.');
-
+        if (container && data.strategicInsights) {
+            container.innerHTML = data.strategicInsights.map(item => `
+                <div class="insight-card">
+                    <small style="color: var(--accent-blue); text-transform: uppercase; font-weight:bold;">${item.category}</small>
+                    <h4>${item.title}</h4>
+                    <p>${item.content}</p>
+                    <div class="pro-tip">💡 <b>Strategy:</b> ${item.action}</div>
+                </div>
+            `).join('');
+        }
     } catch (error) {
-        console.error('[HouseProjExplorer] Report failed:', error.message);
-
-        // Replace the loading placeholder with a visible error card
-        container.innerHTML = `
-            <div class="error-inline">
-                <div class="error-title">⚠ Strategic Insights Unavailable</div>
-                <div class="error-detail">${escapeHtml(error.message)}</div>
-            </div>`;
+        console.warn("Strategic Report could not be loaded:", error.message);
+        // Page keeps running even if report is missing
     }
 }
 
-// ─── Excel Data ─────────────────────────────────────────────
-async function loadExcelData() {
-    const container = document.getElementById('table-container');
-    if (!container) { console.error('[HouseProjExplorer] #table-container not found.'); return; }
-
-    if (typeof XLSX === 'undefined') {
-        console.error('[HouseProjExplorer] XLSX library not available.');
-        container.innerHTML = renderErrorInline('XLSX library failed to load from CDN.');
-        return;
-    }
-
+// 2. Fetch Excel Property Data (Restored Working Logic)
+async function initExcelData() {
     try {
-        console.log('[HouseProjExplorer] Fetching Excel from:', EXCEL_PATH);
         const response = await fetch(EXCEL_PATH);
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status} — Excel file not found at "${EXCEL_PATH}".`);
-        }
-
+        if (!response.ok) throw new Error(`Excel file not found at ${EXCEL_PATH}`);
+        
         const arrayBuffer = await response.arrayBuffer();
-
-        // XLSX.read with an ArrayBuffer requires type:'buffer'
-        const workbook    = XLSX.read(arrayBuffer, { type: 'buffer' });
-        const sheetName   = workbook.SheetNames[0];
-        const sheet       = workbook.Sheets[sheetName];
-        globalData        = XLSX.utils.sheet_to_json(sheet);
-
-        if (!globalData || globalData.length === 0) {
-            throw new Error('Excel file parsed successfully but contains no data rows.');
+        const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+        
+        if (workbook.SheetNames.length > 0) {
+            globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            renderAll();
         }
-
-        console.log('[HouseProjExplorer] Excel loaded — ' + globalData.length + ' rows from sheet "' + sheetName + '".');
-
-        renderTable();
-        renderMapMarkers();
-
     } catch (error) {
-        console.error('[HouseProjExplorer] Excel failed:', error.message);
-        container.innerHTML = renderErrorInline(error.message);
+        console.error("Excel Load Error:", error);
+        document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel: ${error.message}</p>`;
     }
 }
 
-// ─── Render Table ───────────────────────────────────────────
-function renderTable() {
+// --- RENDERING LOGIC (Restored Working Logic) ---
+const formatCurrency = (value) => {
+    if (!value) return '-';
+    const num = parseFloat(String(value).replace(/[$,]/g, ''));
+    return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+};
+
+function renderAll() {
+    renderMap(globalData);
+    renderTable(globalData);
+}
+
+function renderMap(data) {
+    if (!map || !data || data.length === 0) return;
+    map.eachLayer((layer) => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+    const bounds = [];
+    data.forEach(row => {
+        const lat = parseFloat(row.Latitude || row.lat);
+        const lng = parseFloat(row.Longitude || row.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            const marker = L.marker([lat, lng]).addTo(map);
+            marker.bindTooltip(`
+                <div class="property-tooltip">
+                    ${row.Image ? `<img src="${row.Image}" class="tooltip-img" style="width:180px; height:120px; object-fit:cover; border-radius:5px; margin-bottom:8px; display:block;">` : ''}
+                    <div style="font-size: 16px; font-weight: bold; color: white;">${formatCurrency(row.Price)}</div>
+                    <div style="font-size: 12px; margin: 5px 0; color: #ccc;">📏 ${row.Size || '-'} sqft</div>
+                </div>`, { sticky: true, direction: 'right' });
+            bounds.push([lat, lng]);
+        }
+    });
+    if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+}
+
+function renderTable(data) {
     const container = document.getElementById('table-container');
-    if (!container || globalData.length === 0) return;
-
-    const headers = Object.keys(globalData[0]);
-
-    // Update row count
-    const countEl = document.getElementById('rowCount');
-    if (countEl) countEl.textContent = globalData.length + ' properties';
-
-    let html = '<table><thead><tr>'
-             + headers.map(h => '<th>' + escapeHtml(h) + '</th>').join('')
-             + '</tr></thead><tbody>';
-
-    globalData.forEach(row => {
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    let html = '<table><thead><tr>' + headers.map(h => `<th onclick="handleSort('${h}')">${h}</th>`).join('') + '</tr></thead><tbody>';
+    data.forEach(row => {
         html += '<tr>' + headers.map(h => {
-            const val = row[h];
-            let display;
-            if (val === undefined || val === null) {
-                display = '—';
-            } else if (typeof val === 'number' && val >= 1000) {
-                display = val.toLocaleString();
-            } else {
-                display = String(val);
+            let val = row[h] || '-';
+            if (h.toLowerCase() === 'price') val = formatCurrency(val);
+            if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) {
+                val = `<a href="${val}" target="_blank" class="redfin-link" style="padding: 5px 10px; background: #c82333; color: #fff; text-decoration: none; border-radius: 4px; font-size: 11px;">Redfin</a>`;
             }
-            return '<td>' + escapeHtml(display) + '</td>';
+            return `<td>${val}</td>`;
         }).join('') + '</tr>';
     });
-
     container.innerHTML = html + '</tbody></table>';
 }
 
-// ─── Render Map Markers ─────────────────────────────────────
-function renderMapMarkers() {
-    if (!map || !markerGroup) {
-        console.warn('[HouseProjExplorer] Map not ready — skipping marker render.');
-        return;
-    }
-
-    markerGroup.clearLayers();
-    let markerCount = 0;
-
-    globalData.forEach((row, i) => {
-        // Try every common column name variant for coordinates
-        const lat = parseFloat(
-            row.Latitude  || row.latitude  || row.lat || row.Lat || row.LAT || ''
-        );
-        const lng = parseFloat(
-            row.Longitude || row.longitude || row.lng || row.Lng || row.LNG || row.Long || ''
-        );
-
-        if (isNaN(lat) || isNaN(lng)) return;
-
-        markerCount++;
-
-        // Build tooltip + popup strings safely
-        const name  = String(row.Name || row.name || row.Property || row.Title || ('Property #' + (i + 1)));
-        const price = row.Price || row.price || '';
-        const tooltipText = price
-            ? name + ' — $' + Number(price).toLocaleString()
-            : name;
-
-        const popupHtml = '<strong>' + escapeHtml(name) + '</strong><br>'
-            + 'Coordinates: ' + lat.toFixed(4) + ', ' + lng.toFixed(4)
-            + (price ? '<br>Price: $' + Number(price).toLocaleString() : '');
-
-        L.marker([lat, lng])
-            .addTo(markerGroup)
-            .bindTooltip(tooltipText, { permanent: false, direction: 'top' })
-            .bindPopup(popupHtml);
-    });
-
-    console.log('[HouseProjExplorer] Plotted ' + markerCount + ' markers.');
-
-    // Auto-zoom to fit all markers
-    if (markerCount > 0) {
-        try {
-            map.fitBounds(markerGroup.getBounds(), { padding: [30, 30] });
-        } catch (e) {
-            console.warn('[HouseProjExplorer] fitBounds failed:', e.message);
+function handleSort(key) {
+    sortConfig.direction = (sortConfig.key === key && sortConfig.direction === 'asc') ? 'desc' : 'asc';
+    sortConfig.key = key;
+    globalData.sort((a, b) => {
+        let v1 = String(a[key] || '').replace(/[$,]/g, '');
+        let v2 = String(b[key] || '').replace(/[$,]/g, '');
+        if (!isNaN(v1) && !isNaN(v2) && v1 !== '' && v2 !== '') { 
+            v1 = parseFloat(v1); v2 = parseFloat(v2); 
         }
-    }
+        return sortConfig.direction === 'asc' ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+    });
+    renderAll();
 }
-
-// ─── Helpers ────────────────────────────────────────────────
-
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
-}
-
-function renderErrorInline(msg) {
-    return '<div class="error-inline">'
-         + '<div class="error-title">⚠ Could not load property data</div>'
-         + '<div class="error-detail">' + escapeHtml(msg) + '</div>'
-         + '</div>';
-}
-
-// Global so the HTML button's onclick can call it
-window.toggleTheme = toggleTheme;
