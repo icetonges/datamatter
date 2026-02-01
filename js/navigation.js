@@ -1,108 +1,104 @@
-// CONFIG: Purely relative paths for GitHub Pages
+// CONFIG: Purely relative paths
 const REPORT_PATH = 'data/houseproject1/report.json';
 const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
 
 let globalData = [];
-let map;
+let map; 
 
-window.onload = async () => {
-    console.log("Diagnostic: Page Loaded. Starting checks...");
-    
-    // 1. Theme (Safe)
+window.onload = () => {
+    // 1. Set Theme
     const savedTheme = localStorage.getItem('selected-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
-    // 2. Initialize Map (with Safety Check)
-    try {
-        if (typeof L !== 'undefined') {
-            initMap();
-        } else {
-            throw new Error("Leaflet Library (L) not loaded. Check your HTML scripts.");
-        }
-    } catch (e) {
-        showError("Map Error: " + e.message);
-    }
+    // 2. Safe Theme Sync (The fix that prevents the crash)
+    const frame = document.getElementById('main-frame');
+    if (frame) { syncIframeTheme(); }
 
-    // 3. Load Files (Independent of each other)
+    // 3. Run the Data Loaders
+    initMap();
     loadStrategicReport();
     initExcelData();
 };
 
 function initMap() {
-    map = L.map('map').setView([0, 0], 2);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
-        attribution: '&copy; CARTO' 
-    }).addTo(map);
+    try {
+        map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
+            attribution: '&copy; CARTO' 
+        }).addTo(map);
+    } catch (e) { console.error("Map Init Failed:", e); }
 }
 
 async function loadStrategicReport() {
     try {
         const response = await fetch(REPORT_PATH);
-        if (!response.ok) throw new Error(`Could not find ${REPORT_PATH}`);
+        if (!response.ok) return; // Exit silently if file missing
         const data = await response.json();
         
         const container = document.getElementById('insights-section');
+        const statusContainer = document.getElementById('status-container');
+
+        if (statusContainer) statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
         if (container) {
             container.innerHTML = data.strategicInsights.map(item => `
                 <div class="insight-card">
+                    <small style="color: var(--accent-blue); text-transform: uppercase;">${item.category}</small>
                     <h4>${item.title}</h4>
                     <p>${item.content}</p>
                 </div>
             `).join('');
         }
-    } catch (error) {
-        console.warn("Report skipped:", error.message);
-        // We don't crash the whole page if just the report is missing
-    }
+    } catch (e) { console.warn("JSON Report not found, skipping..."); }
 }
 
 async function initExcelData() {
-    const tableContainer = document.getElementById('table-container');
     try {
         const response = await fetch(EXCEL_PATH);
-        if (!response.ok) throw new Error(`Excel file not found at: ${EXCEL_PATH}`);
-        
+        if (!response.ok) throw new Error("Excel file not found at " + EXCEL_PATH);
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        globalData = XLSX.utils.sheet_to_json(firstSheet);
-        
-        if (globalData.length > 0) {
-            renderAll();
-        } else {
-            throw new Error("Excel file is empty or formatted incorrectly.");
-        }
-    } catch (error) {
-        showError("Data Error: " + error.message);
+        globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        renderAll();
+    } catch (e) {
+        console.error("Excel Error:", e);
+        document.getElementById('table-container').innerHTML = `<p style="color:red">Error: ${e.message}</p>`;
     }
 }
 
 function renderAll() {
-    // 1. Render Table
+    renderMap(globalData);
+    renderTable(globalData);
+}
+
+function renderMap(data) {
+    if (!map || !data.length) return;
+    const bounds = [];
+    data.forEach(row => {
+        const lat = parseFloat(row.Latitude || row.lat);
+        const lng = parseFloat(row.Longitude || row.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            L.marker([lat, lng]).addTo(map).bindTooltip(String(row.Price || "Property"));
+            bounds.push([lat, lng]);
+        }
+    });
+    if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+}
+
+function renderTable(data) {
     const container = document.getElementById('table-container');
-    const headers = Object.keys(globalData[0]);
+    if (!data.length) return;
+    const headers = Object.keys(data[0]);
     let html = '<table><thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
-    globalData.forEach(row => {
+    data.forEach(row => {
         html += '<tr>' + headers.map(h => `<td>${row[h] || '-'}</td>`).join('') + '</tr>';
     });
     container.innerHTML = html + '</tbody></table>';
-
-    // 2. Render Map Markers
-    if (map) {
-        globalData.forEach(row => {
-            const lat = parseFloat(row.Latitude || row.lat);
-            const lng = parseFloat(row.Longitude || row.lng);
-            if (!isNaN(lat) && !isNaN(lng)) {
-                L.marker([lat, lng]).addTo(map).bindTooltip(row.Price || "Property");
-            }
-        });
-    }
 }
 
-// Helper to show errors on the actual page for you to see
-function showError(msg) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style = "background: #721c24; color: #f8d7da; padding: 15px; margin: 10px; border-radius: 5px; border: 1px solid #f5c6cb;";
-    errorDiv.innerHTML = `<strong>⚠️ System Error:</strong> ${msg}`;
-    document.body.prepend(errorDiv);
+function syncIframeTheme() {
+    const theme = document.documentElement.getAttribute('data-theme');
+    const iframe = document.getElementById('main-frame');
+    if (iframe && iframe.contentDocument) {
+        iframe.contentDocument.documentElement.setAttribute('data-theme', theme);
+    }
 }
