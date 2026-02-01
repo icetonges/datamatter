@@ -1,4 +1,4 @@
-/* Variables for Light/Dark themes */
+/* LIGHT MODE (Default) */
 :root {
     --bg-color: #f8fafc;
     --text-main: #1e293b;
@@ -9,6 +9,7 @@
     --accent-green: #10b981;
 }
 
+/* DARK MODE (Triggered by data-theme) */
 [data-theme="dark"] {
     --bg-color: #0f111a;
     --text-main: #e1e1e6;
@@ -20,24 +21,26 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-main);
-    font-family: 'Segoe UI', sans-serif;
+    transition: 0.3s ease;
+    font-family: 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 20px;
-    transition: 0.3s ease;
 }
 
-.title { color: var(--text-heading); }
+h1, h2, h3, .title { color: var(--text-heading); }
 
-/* Summary Components */
+/* SUMMARY SECTION STYLES */
+.summary-container { margin: 20px 0 40px 0; }
+
 .market-status-pill {
     display: inline-block;
-    padding: 6px 16px;
+    padding: 4px 12px;
     background: var(--accent-green);
-    color: #fff;
+    color: white;
     border-radius: 20px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: bold;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .insights-grid {
@@ -47,8 +50,24 @@ body {
 }
 
 .insight-card {
-    background: var(--card-bg);
+    background-color: var(--card-bg);
     border: 1px solid var(--border);
     padding: 20px;
     border-radius: 12px;
+    transition: transform 0.2s ease;
+}
+
+.insight-card:hover { transform: translateY(-5px); border-color: var(--accent-blue); }
+
+.insight-card h4 { margin: 10px 0; color: var(--text-heading); }
+
+.insight-card p { font-size: 0.9rem; line-height: 1.5; color: var(--text-main); opacity: 0.8; }
+
+.pro-tip {
+    margin-top: 15px;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--accent-blue);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
 }
