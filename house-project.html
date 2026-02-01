@@ -2,13 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>House Project Explorer</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        #map { 
+            height: 550px; 
+            width: 100%; 
+            border-radius: 15px; 
+            border: 1px solid var(--border);
+            margin: 20px 0 40px 0;
+            z-index: 1;
+        }
+        .table-wrapper { 
+            overflow-x: auto; 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            border: 1px solid var(--border);
+            max-height: 800px;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th { 
+            background-color: var(--border); 
+            color: var(--accent-blue); 
+            padding: 15px; 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            text-align: left; 
+            cursor: pointer; 
+        }
+        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .property-tooltip {
+            background: #1a1d29 !important;
+            color: white !important;
+            border: 1px solid #00a2ff !important;
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
+
 <div class="container">
-    <a href="index.html" class="nav-back">← Back to Dashboard</a>
+    <a href="index.html" class="nav-back" style="text-decoration:none; color:var(--accent-blue); font-weight:bold;">← Back to Dashboard</a>
     <h1 class="title">House Project Explorer</h1>
     
     <section class="summary-container">
@@ -18,7 +58,11 @@
         </div>
     </section>
 
-    <div id="map" style="height: 550px; width: 100%; border-radius: 15px; margin-bottom: 40px; border: 1px solid var(--border);"></div>
+    <div id="map"></div>
+
+    <div class="table-controls">
+        <h3 class="title">Detailed Project Data</h3>
+    </div>
 
     <div id="table-container" class="table-wrapper">
         <p style="padding: 30px; text-align: center;">Fetching latest project data...</p>
@@ -27,6 +71,119 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="navigation.js"></script>
-</body>
-</html>
+
+<script>
+    // CONFIG: Using relative paths as they worked for Excel
+    const REPORT_PATH = 'data/houseproject1/report.json';
+    const EXCEL_PATH = 'data/houseproject1/ddd.xlsx'; 
+
+    let globalData = [];
+    let sortConfig = { key: null, direction: 'asc' };
+    let map; 
+
+    window.onload = () => {
+        const savedTheme = localStorage.getItem('selected-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        initMap();
+        loadStrategicReport(); // JSON fix included here
+        initExcelData();       // Your working Excel logic
+    };
+
+    function initMap() {
+        map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
+            attribution: '&copy; CARTO' 
+        }).addTo(map);
+    }
+
+    // 1. Fetch JSON Strategic Report (Fixed Path)
+    async function loadStrategicReport() {
+        try {
+            const response = await fetch(REPORT_PATH);
+            if (!response.ok) throw new Error('Report file not found');
+            const data = await response.json();
+            
+            const container = document.getElementById('insights-section');
+            const statusContainer = document.getElementById('status-container');
+
+            if (statusContainer && data.marketStatus) {
+                statusContainer.innerHTML = `<span class="market-status-pill">Status: ${data.marketStatus}</span>`;
+            }
+
+            if (container && data.strategicInsights) {
+                container.innerHTML = data.strategicInsights.map(item => `
+                    <div class="insight-card">
+                        <small style="color: var(--accent-blue); text-transform: uppercase; font-weight:bold;">${item.category}</small>
+                        <h4>${item.title}</h4>
+                        <p>${item.content}</p>
+                        <div class="pro-tip">💡 <b>Strategy:</b> ${item.action}</div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.warn("JSON Report skip:", error.message);
+            // Non-critical: we don't break the page if report is missing
+        }
+    }
+
+    // 2. Fetch Excel Property Data (Original Working Logic)
+    async function initExcelData() {
+        try {
+            const response = await fetch(EXCEL_PATH);
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+            globalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            renderAll();
+        } catch (error) {
+            console.error("Excel Load Error:", error);
+            document.getElementById('table-container').innerHTML = `<p style="color:red; text-align:center;">Error loading Excel: ${error.message}</p>`;
+        }
+    }
+
+    const formatCurrency = (value) => {
+        if (!value) return '-';
+        const num = parseFloat(String(value).replace(/[$,]/g, ''));
+        return isNaN(num) ? value : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+    };
+
+    function renderAll() {
+        renderMap(globalData);
+        renderTable(globalData);
+    }
+
+    function renderMap(data) {
+        if (!map) return;
+        map.eachLayer((layer) => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+        const bounds = [];
+        data.forEach(row => {
+            const lat = parseFloat(row.Latitude || row.lat);
+            const lng = parseFloat(row.Longitude || row.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const marker = L.marker([lat, lng]).addTo(map);
+                marker.bindTooltip(`
+                    <div class="property-tooltip">
+                        <div style="font-size: 16px; font-weight: bold;">${formatCurrency(row.Price)}</div>
+                        <div style="font-size: 12px; margin: 5px 0; color: #ccc;">📏 ${row.Size || '-'} sqft</div>
+                    </div>`, { sticky: true, direction: 'right' });
+                bounds.push([lat, lng]);
+            }
+        });
+        if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    function renderTable(data) {
+        const container = document.getElementById('table-container');
+        if (!data || data.length === 0) return;
+        const headers = Object.keys(data[0]);
+        let html = '<table><thead><tr>' + headers.map(h => `<th onclick="handleSort('${h}')">${h}</th>`).join('') + '</tr></thead><tbody>';
+        data.forEach(row => {
+            html += '<tr>' + headers.map(h => {
+                let val = row[h] || '-';
+                if (h.toLowerCase() === 'price') val = formatCurrency(val);
+                if (h.toLowerCase().includes('redfin') && String(val).startsWith('http')) {
+                    val = `<a href="${val}" target="_blank" style="padding: 5px 10px; background: #c82333; color: #fff; text-decoration: none; border-radius: 4px; font-size: 11px;">Redfin</a>`;
+                }
+                return `<td>${val}</td>`;
+            }).join('') + '</tr>';
+        });
